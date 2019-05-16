@@ -2,10 +2,13 @@ package org.mule.designcenter.vcs.client.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.util.Arrays;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class MockBranchFileManager implements BranchFileManager {
 
@@ -32,7 +35,24 @@ public class MockBranchFileManager implements BranchFileManager {
 
     @Override
     public List<ApiFile> listFiles() {
-        return Arrays.stream(branchDirectory.list()).map((name) -> new ApiFile(name, ApiFileType.FILE)).collect(Collectors.toList());
+        final ArrayList<ApiFile> result = new ArrayList<>();
+        final Path root = branchDirectory.toPath();
+        try {
+            Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    result.add(new ApiFile(root.relativize(file).toString(), ApiFileType.FILE));
+                    return FileVisitResult.CONTINUE;
+                }
+
+
+            });
+        } catch (Exception e) {
+
+        }
+
+        return result;
     }
 
     @Override

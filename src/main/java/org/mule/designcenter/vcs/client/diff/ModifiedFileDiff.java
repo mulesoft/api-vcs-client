@@ -48,6 +48,8 @@ public class ModifiedFileDiff implements Diff {
 
     @Override
     public void print(PrintWriter printWriter) {
+        printWriter.println("Index: " + relativePath);
+        printWriter.println("===================================================================");
         final List<String> stringList = UnifiedDiffUtils.generateUnifiedDiff(relativePath, relativePath, originalLines, diff, 2);
         for (String line : stringList) {
             printWriter.println(line);
@@ -60,7 +62,7 @@ public class ModifiedFileDiff implements Diff {
         try {
             branch.updateFile(relativePath, Files.readAllBytes(file));
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }

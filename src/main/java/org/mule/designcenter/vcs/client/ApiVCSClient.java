@@ -102,7 +102,6 @@ public class ApiVCSClient {
     }
 
     public List<Diff> diff() {
-        final File apiVCSDirectory = getApiVCSDirectory();
         final ApiVCSConfig apiVCSConfig = loadConfig();
         final String branchName = apiVCSConfig.getBranch();
         final File branchDirectory = getBranchDirectory(branchName);
@@ -119,26 +118,34 @@ public class ApiVCSClient {
         final ApiLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
         if (apiLock.isSuccess()) {
             final List<ApiFile> apiFiles = apiLock.getBranchFileManager().listFiles();
-            try {
-                for (ApiFile file : apiFiles) {
+
+            for (ApiFile file : apiFiles) {
+                try {
                     //Filter exchange_modules
                     if (!file.getPath().startsWith("exchange_modules/")) {
                         ApiFileContent fileGetResponse = apiLock.getBranchFileManager().fileContent(file.getPath());
 
                         File targetFile = new File(targetDirectory, file.getPath());
+                        //Make sure container folder exists
+                        if (!targetFile.getParentFile().exists())
+                            targetFile.getParentFile().mkdirs();
                         try (FileOutputStream writer = new FileOutputStream(targetFile)) {
                             writer.write(fileGetResponse.getContent());
                         }
                         File branchTargetDir = new File(branchDirectory, file.getPath());
+                        //Make sure container folder exists
+                        if (!branchTargetDir.getParentFile().exists())
+                            branchTargetDir.getParentFile().mkdirs();
                         try (FileOutputStream writer = new FileOutputStream(branchTargetDir)) {
                             writer.write(fileGetResponse.getContent());
                         }
                     }
+                } catch (IOException e) {
+                    return SimpleResult.fail("Problem while trying to write file " + file.getPath() + ".");
                 }
-                return SimpleResult.SUCCESS;
-            } catch (IOException e) {
-                return SimpleResult.fail("Problem while trying to write files.");
             }
+            return SimpleResult.SUCCESS;
+
         } else {
             return SimpleResult.fail("Repository is locked by " + apiLock.getOwner());
         }
@@ -232,7 +239,8 @@ public class ApiVCSClient {
                             if (targetChild.isDirectory()) {
                                 addDeletedDiffs(targetChild.toPath(), relativePath, diffs);
                             } else {
-                                diffs.add(new DeleteFileDiff(relativePath + File.separator + targetChild.getName()));
+                                final String deletedFilePath = relativePath + File.separator + targetChild.getName();
+                                diffs.add(new DeleteFileDiff(deletedFilePath, Files.readAllLines(targetChild.toPath(), ApiVCSConfig.DEFAULT_CHARSET)));
                             }
                         }
                     }
@@ -242,7 +250,7 @@ public class ApiVCSClient {
                 final Path targetPath = target.toPath();
                 if (source.isDirectory()) {
                     if (target.isFile()) {
-                        diffs.add(new DeleteFileDiff(relativePath));
+                        diffs.add(new DeleteFileDiff(relativePath, Files.readAllLines(target.toPath(), ApiVCSConfig.DEFAULT_CHARSET)));
                     }
 
                     Files.walkFileTree(sourcePath, new SimpleFileVisitor<Path>() {
@@ -252,8 +260,7 @@ public class ApiVCSClient {
                             if (attrs.isRegularFile()) {
                                 final String newRelativePath = relativePath + File.separator + sourcePath.relativize(file).toString();
                                 final byte[] content = Files.readAllBytes(file);
-                                String contentType = calculateContentType(file);
-                                diffs.add(new NewFileDiff(content, contentType, newRelativePath));
+                                diffs.add(new NewFileDiff(content, newRelativePath));
                             }
                             return FileVisitResult.CONTINUE;
                         }
@@ -262,24 +269,32 @@ public class ApiVCSClient {
                 } else if (target.isDirectory()) {
                     if (source.isFile()) {
                         final byte[] content = Files.readAllBytes(sourcePath);
-                        diffs.add(new NewFileDiff(content, calculateContentType(sourcePath), relativePath));
+                        diffs.add(new NewFileDiff(content, relativePath));
                     }
                     addDeletedDiffs(targetPath, relativePath, diffs);
-                } else if (source.isFile() && target.isFile()) {
-                    final List<String> original = Files.readAllLines(target.toPath(), ApiVCSConfig.DEFAULT_CHARSET);
-                    final List<String> revised = Files.readAllLines(source.toPath(), ApiVCSConfig.DEFAULT_CHARSET);
-                    try {
-                        final Patch<String> diff = DiffUtils.diff(original, revised);
-                        if (!diff.getDeltas().isEmpty()) {
-                            diffs.add(new ModifiedFileDiff(diff, relativePath, original));
+                } else if (source.isFile()) {
+                    if (target.isFile()) {
+                        final List<String> original = Files.readAllLines(target.toPath(), ApiVCSConfig.DEFAULT_CHARSET);
+                        final List<String> revised = Files.readAllLines(source.toPath(), ApiVCSConfig.DEFAULT_CHARSET);
+                        try {
+                            final Patch<String> diff = DiffUtils.diff(original, revised);
+                            if (!diff.getDeltas().isEmpty()) {
+                                diffs.add(new ModifiedFileDiff(diff, relativePath, original));
+                            }
+                        } catch (DiffException e) {
+                            throw new RuntimeException(e.getMessage());
                         }
-                    } catch (DiffException e) {
-                        throw new RuntimeException(e.getMessage());
+                    } else if (!target.exists()) {
+                        diffs.add(new NewFileDiff(Files.readAllBytes(source.toPath()), relativePath));
+                    }
+                } else {
+                    if (target.isFile() && !source.exists()) {
+                        diffs.add(new DeleteFileDiff(relativePath, Files.readAllLines(target.toPath(), ApiVCSConfig.DEFAULT_CHARSET)));
                     }
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
         return diffs;
     }
@@ -295,23 +310,15 @@ public class ApiVCSClient {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (attrs.isRegularFile()) {
                     final String newRelativePath = relativePath + File.separator + targetPath.relativize(file).toString();
-                    diffs.add(new DeleteFileDiff(newRelativePath));
+                    try {
+                        diffs.add(new DeleteFileDiff(newRelativePath, Files.readAllLines(targetPath, ApiVCSConfig.DEFAULT_CHARSET)));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-    }
-
-    private String calculateContentType(Path file) throws IOException {
-        String contentType = Files.probeContentType(file);
-        if (contentType == null) {
-            if (file.getFileName().toString().endsWith(".raml")) {
-                contentType = "text/raml";
-            } else {
-                contentType = "application/octet-stream";
-            }
-        }
-        return contentType;
     }
 
     private SimpleResult storeConfig(String projectId, String branch, File apiVCSDirectory) {
