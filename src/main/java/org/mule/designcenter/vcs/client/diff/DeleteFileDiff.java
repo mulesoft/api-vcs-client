@@ -3,7 +3,6 @@ package org.mule.designcenter.vcs.client.diff;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.DeleteDelta;
-import com.github.difflib.patch.InsertDelta;
 import com.github.difflib.patch.Patch;
 import org.mule.designcenter.vcs.client.service.BranchFileManager;
 
@@ -23,7 +22,7 @@ public class DeleteFileDiff implements Diff {
     }
 
     @Override
-    public ApplyResult apply(File targetDirectory) {
+    public ApplyResult apply(File targetDirectory, MergingStrategy mergingStrategy) {
         final File file = new File(targetDirectory, relativePath);
         if (file.exists()) {
             final boolean delete = file.delete();

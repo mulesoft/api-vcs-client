@@ -22,18 +22,34 @@ public class NewFileDiff implements Diff {
     }
 
     @Override
-    public ApplyResult apply(File targetDirectory) {
+    public ApplyResult apply(File targetDirectory, MergingStrategy mergingStrategy) {
         final File file = new File(targetDirectory, relativePath);
         if (file.exists()) {
-            return ApplyResult.fail("File already exists " + file.getAbsolutePath());
-        } else {
-            try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                fileOutputStream.write(content);
-            } catch (IOException e) {
-                return ApplyResult.fail(e.getMessage());
+            switch (mergingStrategy) {
+                case KEEP_BOTH:
+                    createFile(new File(targetDirectory, relativePath + Diff.OURS_FILE_EXTENSION));
+                    break;
+                case KEEP_OURS:
+                    createFile(file);
+                    break;
             }
-            return ApplyResult.SUCCESSFUL;
+            return ApplyResult.fail("File already exists " + file.getAbsolutePath() + ". Resolution strategy applied was : " + mergingStrategy);
+        } else {
+            return createFile(file);
         }
+    }
+
+    private ApplyResult createFile(File file) {
+        if (!file.getParentFile().exists()) {
+            //Make sure container is present
+            file.getParentFile().mkdirs();
+        }
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            fileOutputStream.write(content);
+        } catch (IOException e) {
+            return ApplyResult.fail("Unable to create file " + e.getMessage());
+        }
+        return ApplyResult.SUCCESSFUL;
     }
 
     @Override

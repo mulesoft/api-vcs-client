@@ -4,11 +4,13 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class MockFileManager implements ApiFileManager {
 
     private File directory;
+    private AtomicInteger counter = new AtomicInteger(0);
 
     public MockFileManager(File directory) {
         this.directory = directory;
@@ -16,7 +18,8 @@ public class MockFileManager implements ApiFileManager {
 
     @Override
     public ApiLock acquireLock(String projectId, String branchName) {
-        return new ApiLock(true, "acme", new MockBranchFileManager(new File(directory, branchName)));
+        final int index = counter.getAndIncrement();
+        return new ApiLock(true, "acme", new MockBranchFileManager(new File(directory, branchName + File.separator + "t" + index)));
     }
 
     @Override

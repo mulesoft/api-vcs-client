@@ -28,21 +28,42 @@ public class ModifiedFileDiff implements Diff {
     }
 
     @Override
-    public ApplyResult apply(File targetDirectory) {
+    public ApplyResult apply(File targetDirectory, MergingStrategy mergingStrategy) {
         try {
-            final Path file = new File(targetDirectory, relativePath).toPath();
-            final List<String> source = Files.readAllLines(file, ApiVCSConfig.DEFAULT_CHARSET);
+            final Path theFilePath = new File(targetDirectory, relativePath).toPath();
+            final List<String> source = Files.readAllLines(theFilePath, ApiVCSConfig.DEFAULT_CHARSET);
             final List<String> patch;
             try {
                 patch = DiffUtils.patch(source, diff);
+                Files.write(theFilePath, patch, ApiVCSConfig.DEFAULT_CHARSET, StandardOpenOption.WRITE);
             } catch (PatchFailedException e) {
+                switch (mergingStrategy) {
+                    case KEEP_OURS:
+                        try {
+                            final List<String> ours = DiffUtils.patch(originalLines, diff);
+                            Files.write(theFilePath, ours, ApiVCSConfig.DEFAULT_CHARSET, StandardOpenOption.WRITE);
+                        } catch (PatchFailedException ex) {
+                            //This should not happen
+                            return ApplyResult.fail("FATAL ERROR while trying to apply patch." + ex.getMessage());
+                        }
+                        break;
+                    case KEEP_BOTH:
+                        try {
+                            final List<String> ours = DiffUtils.patch(originalLines, diff);
+                            Files.write(new File(targetDirectory, relativePath + Diff.OURS_FILE_EXTENSION).toPath(), ours, ApiVCSConfig.DEFAULT_CHARSET, StandardOpenOption.WRITE);
+                        } catch (PatchFailedException ex) {
+                            //This should not happen
+                            return ApplyResult.fail("FATAL ERROR while trying to apply patch." + ex.getMessage());
+                        }
+                        break;
+                }
                 //We should some how patch it and
-                return ApplyResult.fail(e.getMessage());
+                return ApplyResult.fail("Error while trying to apply patch on `" + relativePath + "`. Reason: " + e.getMessage());
             }
-            Files.write(file, patch, ApiVCSConfig.DEFAULT_CHARSET, StandardOpenOption.WRITE);
+
             return ApplyResult.SUCCESSFUL;
         } catch (IOException e) {
-            return ApplyResult.fail(e.getMessage());
+            return ApplyResult.fail("Error while trying to write `" + relativePath + "`. Reason :" + e.getMessage());
         }
     }
 

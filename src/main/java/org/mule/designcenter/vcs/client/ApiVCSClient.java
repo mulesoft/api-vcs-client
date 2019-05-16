@@ -50,7 +50,7 @@ public class ApiVCSClient {
         }
     }
 
-    public SimpleResult push() {
+    public SimpleResult push(MergingStrategy mergingStrategy) {
         final ApiVCSConfig apiVCSConfig = loadConfig();
         final String branchName = apiVCSConfig.getBranch();
         try {
@@ -64,7 +64,7 @@ public class ApiVCSClient {
                     checkoutBranch(apiVCSConfig);
                     //apply patches
                     List<String> messages = new ArrayList<>();
-                    boolean success = applyDiffs(diffs, messages);
+                    boolean success = applyDiffs(diffs, messages, mergingStrategy);
                     if (success) {
                         final List<Diff> newDiffs = diff();
                         for (Diff newDiff : newDiffs) {
@@ -85,14 +85,14 @@ public class ApiVCSClient {
         }
     }
 
-    public SimpleResult pull() {
+    public SimpleResult pull(MergingStrategy mergingStrategy) {
         final List<Diff> diffs = diff();
         if (diffs.isEmpty()) {
             return checkoutBranch(loadConfig());
         } else {
             checkoutBranch(loadConfig());
-            List<String> messages = new ArrayList<>();
-            boolean success = applyDiffs(diffs, messages);
+            final List<String> messages = new ArrayList<>();
+            final boolean success = applyDiffs(diffs, messages, mergingStrategy);
             if (success) {
                 return SimpleResult.SUCCESS;
             } else {
@@ -160,12 +160,12 @@ public class ApiVCSClient {
         return new File(targetDirectory, ".apivcs");
     }
 
-    private boolean applyDiffs(List<Diff> diffs, List<String> messages) {
+    private boolean applyDiffs(List<Diff> diffs, List<String> messages, MergingStrategy mergingStrategy) {
         boolean success = true;
         for (Diff diff : diffs) {
-            final ApplyResult apply = diff.apply(targetDirectory);
+            final ApplyResult apply = diff.apply(targetDirectory, mergingStrategy);
             success = apply.isSuccess() && success;
-            if (!apply.getMessage().isPresent()) {
+            if (apply.getMessage().isPresent()) {
                 messages.add(apply.getMessage().get());
             }
         }

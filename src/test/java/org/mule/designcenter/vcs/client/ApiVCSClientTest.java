@@ -1,14 +1,12 @@
 package org.mule.designcenter.vcs.client;
 
 import org.junit.Test;
-import org.mule.designcenter.vcs.client.diff.DeleteFileDiff;
-import org.mule.designcenter.vcs.client.diff.Diff;
-import org.mule.designcenter.vcs.client.diff.ModifiedFileDiff;
-import org.mule.designcenter.vcs.client.diff.NewFileDiff;
+import org.mule.designcenter.vcs.client.diff.*;
 import org.mule.designcenter.vcs.client.service.MockFileManager;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.UUID;
 
@@ -149,6 +147,170 @@ public class ApiVCSClientTest {
                 "-  name: string\n" +
                 "-  lastName: string".trim();
         assertThat(diffContent.toString().trim(), is(diff));
+    }
+
+    @Test
+    public void pullChanges() {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("simple_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        final SimpleResult master = client.clone(new ApiVCSConfig("1234", "master"));
+        final File myLib = new File(workspace, "MyLib.raml");
+        final File api = new File(workspace, "Api.raml");
+        assertThat("MyLib should not exist", myLib.exists(), is(false));
+        assertThat("Api should exist", api.exists(), is(true));
+        client.pull(MergingStrategy.KEEP_THEIRS);
+        assertThat("MyLib should exist", myLib.exists(), is(true));
+        assertThat("Api should exist", api.exists(), is(true));
+    }
+
+
+    @Test
+    public void pullChangesWithModifications() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("simple_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        final SimpleResult master = client.clone(new ApiVCSConfig("1234", "master"));
+        final File myLib = new File(workspace, "MyLib.raml");
+        final File api = new File(workspace, "Api.raml");
+
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(api)) {
+
+            fileWriter.write(newFileContent);
+        }
+        assertThat("Api should exist", api.exists(), is(true));
+        final SimpleResult pull = client.pull(MergingStrategy.KEEP_THEIRS);
+        assertThat(pull.isSuccess(), is(true));
+        assertThat("MyLib should exist", myLib.exists(), is(true));
+        assertThat("Api should exist", api.exists(), is(true));
+
+        final String fileContent = readFile(api);
+        assertThat(fileContent.trim(), is(newFileContent.trim()));
+    }
+
+    @Test
+    public void pullNewFileChangesWithConflictsModificationsKeepTheirs() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("simple_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        client.clone(new ApiVCSConfig("1234", "master"));
+        final File myLib = new File(workspace, "MyLib.raml");
+        final String originalContent = "#%RAML 1.0 DataType\n" +
+                "type: string";
+
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(myLib)) {
+            fileWriter.write(newFileContent);
+        }
+
+        final SimpleResult pull = client.pull(MergingStrategy.KEEP_THEIRS);
+        assertThat(pull.isSuccess(), is(false));
+
+        assertThat(myLib.exists(), is(true));
+
+        final String fileContent = readFile(myLib);
+        assertThat(fileContent.trim(), is(originalContent.trim()));
+    }
+
+    @Test
+    public void pullNewFileChangesWithConflictsModificationsKeepOurs() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("simple_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        client.clone(new ApiVCSConfig("1234", "master"));
+        final File myLib = new File(workspace, "MyLib.raml");
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(myLib)) {
+            fileWriter.write(newFileContent);
+        }
+
+        final SimpleResult pull = client.pull(MergingStrategy.KEEP_OURS);
+        assertThat(pull.isSuccess(), is(false));
+
+        assertThat(myLib.exists(), is(true));
+
+        final String fileContent = readFile(myLib);
+        assertThat(fileContent.trim(), is(newFileContent.trim()));
+    }
+
+
+    @Test
+    public void pullModificationChangesWithConflictsModificationsKeepOurs() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modification_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        client.clone(new ApiVCSConfig("1234", "master"));
+        final File myLib = new File(workspace, "Api.raml");
+        assertThat(myLib.exists(), is(true));
+
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test3:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(myLib)) {
+            fileWriter.write(newFileContent);
+        }
+
+        final SimpleResult pull = client.pull(MergingStrategy.KEEP_OURS);
+        assertThat(pull.isSuccess(), is(false));
+
+        assertThat(myLib.exists(), is(true));
+
+        final String fileContent = readFile(myLib);
+        assertThat(fileContent.trim(), is(newFileContent.trim()));
+    }
+
+    @Test
+    public void pullModificationChangesWithConflictsModificationsKeepTheirs() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modification_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        client.clone(new ApiVCSConfig("1234", "master"));
+        final File myLib = new File(workspace, "Api.raml");
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(myLib)) {
+            fileWriter.write(newFileContent);
+        }
+
+        final SimpleResult pull = client.pull(MergingStrategy.KEEP_OURS);
+        assertThat(pull.isSuccess(), is(false));
+
+        assertThat(myLib.exists(), is(true));
+
+        final String fileContent = readFile(myLib);
+        assertThat(fileContent.trim(), is(newFileContent.trim()));
+    }
+
+    private String readFile(File api) throws IOException {
+        final List<String> lines = Files.readAllLines(api.toPath(), ApiVCSConfig.DEFAULT_CHARSET);
+        return toString(lines);
+    }
+
+    private String toString(List<String> lines) {
+        return lines.stream().reduce((l, r) -> l + "\n" + r).orElse("");
     }
 
 }

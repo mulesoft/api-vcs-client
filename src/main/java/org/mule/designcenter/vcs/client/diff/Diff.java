@@ -7,7 +7,9 @@ import java.io.PrintWriter;
 
 public interface Diff {
 
-    ApplyResult apply(File targetDirectory);
+    String OURS_FILE_EXTENSION = ".ours";
+
+    ApplyResult apply(File targetDirectory, MergingStrategy mergingStrategy);
 
     void print(PrintWriter printWriter);
 
