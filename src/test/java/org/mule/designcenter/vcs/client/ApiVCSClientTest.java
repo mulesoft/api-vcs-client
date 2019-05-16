@@ -19,7 +19,6 @@ public class ApiVCSClientTest {
         final File directory = new File(System.getProperty("java.io.tmpdir"));
         final File workspace = new File(directory, UUID.randomUUID().toString());
         workspace.mkdirs();
-        System.out.println("workspace = " + workspace);
         return workspace;
     }
 
