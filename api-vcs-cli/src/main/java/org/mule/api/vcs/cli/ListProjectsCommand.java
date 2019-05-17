@@ -16,7 +16,7 @@ import java.util.concurrent.Callable;
 
 import static picocli.CommandLine.Option;
 
-@Command(description = "Clones a project in the given location",
+@Command(description = "List all projects under the given organization",
         name = "list", mixinStandardHelpOptions = true, version = "checksum 0.1")
 public class ListProjectsCommand extends BaseCommand implements Callable<Integer> {
 
