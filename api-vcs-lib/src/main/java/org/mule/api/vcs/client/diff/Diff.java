@@ -14,4 +14,10 @@ public interface Diff {
     void print(PrintWriter printWriter);
 
     void push(BranchRepositoryManager branch, File targetDirectory);
+
+    String getRelativePath();
+
+    String getOperationType();
+
+    ApplyResult unApply(File targetDirectory);
 }

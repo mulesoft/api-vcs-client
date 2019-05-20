@@ -3,6 +3,7 @@ package org.mule.api.vcs.cli;
 import org.mule.api.vcs.cli.exceptions.ConfigurationException;
 import org.mule.api.vcs.client.ApiVCSClient;
 import org.mule.api.vcs.client.service.UserInfoProvider;
+import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
 import org.mule.cs.exceptions.CoreServicesAPIReferenceException;
 import org.mule.cs.resource.login.model.LoginPOSTBody;
 import org.mule.cs.resource.login.model.LoginPOSTResponseBody;
@@ -29,6 +30,15 @@ public class BaseCommand {
     private String organization;
 
     private ApiVCSConfig globalConfig;
+
+    protected ApiVCSClient createLocalApiVcsClient() throws IOException {
+        final File targetDirectory = getLocalWorkspaceDirectory();
+        return new ApiVCSClient(targetDirectory, new ApiRepositoryFileManager(getAccessTokenProvider()));
+    }
+
+    protected File getLocalWorkspaceDirectory() throws IOException {
+        return new File(".").getCanonicalFile();
+    }
 
     public UserInfoProvider getAccessTokenProvider() {
         final Optional<ApiVCSConfig> globalConfig = getGlobalConfig();

@@ -137,7 +137,7 @@ public class ApiVCSClient {
     private List<Diff> calculateDiff(BranchInfo branchInfo) {
         final String branchName = branchInfo.getBranch();
         final File branchDirectory = getBranchDirectory(branchName);
-        return calculateDiff(targetDirectory, branchDirectory, "");
+        return calculateDiff(targetDirectory, branchDirectory, ".");
     }
 
     public List<ProjectInfo> list() {
@@ -392,4 +392,40 @@ public class ApiVCSClient {
         }
     }
 
+    public ValueResult<String> currentBranch() {
+        return loadConfig().map(b -> b.getBranch());
+    }
+
+    public ValueResult<Void> revert(String relativePath) {
+        try {
+            final File file = new File(targetDirectory, relativePath).getCanonicalFile();
+            final ValueResult<List<Diff>> mayBe = diff();
+            return mayBe.map((diff) -> {
+                for (Diff diff1 : diff) {
+                    final File aFileWithDiff;
+                    try {
+                        aFileWithDiff = new File(targetDirectory, diff1.getRelativePath()).getCanonicalFile();
+                        if (file.equals(aFileWithDiff)) {
+                            diff1.unApply(targetDirectory);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                return null;
+            });
+        } catch (IOException io) {
+            return ValueResult.fail(io.getMessage());
+        }
+    }
+
+    public ValueResult<Void> revertAll() {
+        final ValueResult<List<Diff>> mayBe = diff();
+        return mayBe.map((diff) -> {
+            for (Diff diff1 : diff) {
+                diff1.unApply(targetDirectory);
+            }
+            return null;
+        });
+    }
 }

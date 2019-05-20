@@ -1,6 +1,9 @@
 package org.mule.api.vcs.client;
 
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
 public class ValueResult<T> {
     private boolean success;
@@ -35,6 +38,22 @@ public class ValueResult<T> {
 
     public boolean isFailure() {
         return !isSuccess();
+    }
+
+    public <Q> ValueResult<Q> map(Function<T, Q> mapper) {
+        if (isSuccess()) {
+            return success(mapper.apply(doGetValue()));
+        } else {
+            return (ValueResult<Q>) this;
+        }
+    }
+
+    public <Q> ValueResult<Q> flatMap(Function<T, ValueResult<Q>> mapper) {
+        if (isSuccess()) {
+            return mapper.apply(doGetValue());
+        } else {
+            return (ValueResult<Q>) this;
+        }
     }
 
     public Optional<String> getMessage() {

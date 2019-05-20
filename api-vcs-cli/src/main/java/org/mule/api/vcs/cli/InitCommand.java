@@ -33,9 +33,8 @@ public class InitCommand extends BaseCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        final File workspace = new File(".");
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(workspace, new ApiRepositoryFileManager(getAccessTokenProvider()));
-        final String name = Optional.ofNullable(this.name).orElse(workspace.getCanonicalFile().getName());
+        final ApiVCSClient apiVCSClient = createLocalApiVcsClient();
+        final String name = Optional.ofNullable(this.name).orElse(getLocalWorkspaceDirectory().getName());
         final ValueResult master = apiVCSClient.init(mergingStrategy, apiType, name, description);
         if (master.isFailure()) {
             if (master.getMessage().isPresent())

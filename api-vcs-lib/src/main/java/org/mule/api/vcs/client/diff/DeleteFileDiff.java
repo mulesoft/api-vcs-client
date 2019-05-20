@@ -4,10 +4,10 @@ import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.DeleteDelta;
 import com.github.difflib.patch.Patch;
+import org.mule.api.vcs.client.BranchInfo;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +19,26 @@ public class DeleteFileDiff implements Diff {
     public DeleteFileDiff(String relativePath, List<String> originalLines) {
         this.relativePath = relativePath;
         this.originalLines = originalLines;
+    }
+
+    public String getRelativePath() {
+        return relativePath;
+    }
+
+    @Override
+    public String getOperationType() {
+        return "deleted:";
+    }
+
+    @Override
+    public ApplyResult unApply(File targetDirectory) {
+        final File file = new File(targetDirectory, relativePath);
+        try (final OutputStreamWriter outputStreamWriter = new OutputStreamWriter(new FileOutputStream(file), BranchInfo.DEFAULT_CHARSET)) {
+            outputStreamWriter.write(originalLines.stream().reduce((l, r) -> l + "\n" + r).orElse(""));
+        } catch (IOException e) {
+            return ApplyResult.fail(e.getMessage());
+        }
+        return ApplyResult.SUCCESSFUL;
     }
 
     @Override

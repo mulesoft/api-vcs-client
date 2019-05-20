@@ -7,10 +7,7 @@ import com.github.difflib.patch.Patch;
 import org.mule.api.vcs.client.BranchInfo;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +77,27 @@ public class NewFileDiff implements Diff {
             branch.newFile(relativePath, Files.readAllBytes(file.toPath()), type);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public String getRelativePath() {
+        return relativePath;
+    }
+
+    @Override
+    public String getOperationType() {
+        return "new file:";
+    }
+
+    @Override
+    public ApplyResult unApply(File targetDirectory) {
+        final File file = new File(targetDirectory, relativePath);
+        final boolean deleted = file.delete();
+        if (deleted) {
+            return ApplyResult.SUCCESSFUL;
+        } else {
+            return ApplyResult.fail("Unable to delete `" + relativePath + "`");
         }
     }
 

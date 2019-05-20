@@ -73,10 +73,10 @@ public class ApiVCSClientTest {
         final StringWriter diffContent = new StringWriter();
         diffs2.get(0).print(new PrintWriter(diffContent));
         assertThat(diffs2.get(0), instanceOf(ModifiedFileDiff.class));
-        String diff = "Index: /Api.raml\n" +
+        String diff = "Index: ./Api.raml\n" +
                 "===================================================================\n" +
-                "--- /Api.raml\n" +
-                "+++ /Api.raml\n" +
+                "--- ./Api.raml\n" +
+                "+++ ./Api.raml\n" +
                 "@@ -3,3 +3,3 @@\n" +
                 " /test:\n" +
                 "   get:\n" +
@@ -107,10 +107,10 @@ public class ApiVCSClientTest {
         final StringWriter diffContent = new StringWriter();
         diffs2.get(0).print(new PrintWriter(diffContent));
         assertThat(diffs2.get(0), instanceOf(NewFileDiff.class));
-        String diff = "Index: /MyLib.raml\n" +
+        String diff = "Index: ./MyLib.raml\n" +
                 "===================================================================\n" +
-                "--- /MyLib.raml\n" +
-                "+++ /MyLib.raml\n" +
+                "--- ./MyLib.raml\n" +
+                "+++ ./MyLib.raml\n" +
                 "@@ -1,0 +1,5 @@\n" +
                 "+#%RAML 1.0\n" +
                 "+title: My api\n" +
@@ -135,10 +135,10 @@ public class ApiVCSClientTest {
         final StringWriter diffContent = new StringWriter();
         diffs2.get(0).print(new PrintWriter(diffContent));
         assertThat(diffs2.get(0), instanceOf(DeleteFileDiff.class));
-        String diff = "Index: /fragments/MyTypes2.raml\n" +
+        String diff = "Index: ./fragments/MyTypes2.raml\n" +
                 "===================================================================\n" +
-                "--- /fragments/MyTypes2.raml\n" +
-                "+++ /fragments/MyTypes2.raml\n" +
+                "--- ./fragments/MyTypes2.raml\n" +
+                "+++ ./fragments/MyTypes2.raml\n" +
                 "@@ -1,5 +1,0 @@\n" +
                 "-#%RAML 1.0 DataType\n" +
                 "-type: object\n" +
@@ -303,6 +303,73 @@ public class ApiVCSClientTest {
         assertThat(fileContent.trim(), is(newFileContent.trim()));
     }
 
+
+    @Test
+    public void revertNewFile() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modified_diff");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        final ValueResult master = client.clone(new BranchInfo("1234", "master"));
+        assertThat(master.isSuccess(), is(true));
+        final File libFile = new File(workspace, "MyLib.raml");
+        assertThat(libFile.exists(), is(false));
+        try (final FileWriter fileWriter = new FileWriter(libFile)) {
+            final String content = "#%RAML 1.0\n" +
+                    "title: My api\n" +
+                    "/test:\n" +
+                    "  get:\n" +
+                    "/test2:  \n";
+            fileWriter.write(content);
+        }
+        assertThat(libFile.exists(), is(true));
+        client.revert("MyLib.raml");
+        assertThat(libFile.exists(), is(false));
+    }
+
+
+    @Test
+    public void revertDeleteFile() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modified_diff");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        final ValueResult master = client.clone(new BranchInfo("1234", "master"));
+        assertThat(master.isSuccess(), is(true));
+        final File libFile = new File(workspace, "Api.raml");
+        libFile.delete();
+        assertThat(libFile.exists(), is(false));
+        client.revert("Api.raml");
+        assertThat(libFile.exists(), is(true));
+    }
+
+
+    @Test
+    public void revertModifiedFile() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modified_diff");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        final ValueResult master = client.clone(new BranchInfo("1234", "master"));
+        assertThat(master.isSuccess(), is(true));
+        final File libFile = new File(workspace, "Api.raml");
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(libFile)) {
+            fileWriter.write(newFileContent);
+        }
+
+        client.revert("Api.raml");
+
+        final String originalContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n";
+
+        assertThat(readFile(libFile).trim(), is(originalContent.trim()));
+    }
+
     private String readFile(File api) throws IOException {
         final List<String> lines = Files.readAllLines(api.toPath(), BranchInfo.DEFAULT_CHARSET);
         return toString(lines);
@@ -311,5 +378,6 @@ public class ApiVCSClientTest {
     private String toString(List<String> lines) {
         return lines.stream().reduce((l, r) -> l + "\n" + r).orElse("");
     }
+
 
 }

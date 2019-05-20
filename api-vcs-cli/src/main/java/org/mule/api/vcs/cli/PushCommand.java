@@ -21,7 +21,8 @@ public class PushCommand extends BaseCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(new File("."), new ApiRepositoryFileManager(getAccessTokenProvider()));
+
+        final ApiVCSClient apiVCSClient = createLocalApiVcsClient();
         final ValueResult master = apiVCSClient.push(mergingStrategy);
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
