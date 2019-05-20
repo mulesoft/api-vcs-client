@@ -10,11 +10,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MockBranchFileManager implements BranchFileManager {
+public class MockBranchRepositoryManager implements BranchRepositoryManager {
 
     private File branchDirectory;
 
-    public MockBranchFileManager(File branchDirectory) {
+    public MockBranchRepositoryManager(File branchDirectory) {
         this.branchDirectory = branchDirectory;
     }
 

@@ -8,15 +8,14 @@ import picocli.CommandLine;
                 ListProjectsCommand.class,
                 PullCommand.class,
                 PushCommand.class,
-                DiffCommand.class
+                DiffCommand.class,
+                InitCommand.class
         }
 )
 public class ApiVCSCommand implements Runnable {
     @Override
     public void run() {
-
         // print usage help message to STDOUT without ANSI escape codes
         CommandLine.usage(new ApiVCSCommand(), System.out, CommandLine.Help.Ansi.ON);
-
     }
 }

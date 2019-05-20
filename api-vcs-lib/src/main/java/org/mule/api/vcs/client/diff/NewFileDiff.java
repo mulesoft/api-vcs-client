@@ -5,7 +5,7 @@ import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.InsertDelta;
 import com.github.difflib.patch.Patch;
 import org.mule.api.vcs.client.BranchInfo;
-import org.mule.api.vcs.client.service.BranchFileManager;
+import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -73,7 +73,7 @@ public class NewFileDiff implements Diff {
     }
 
     @Override
-    public void push(BranchFileManager branch, File targetDirectory) {
+    public void push(BranchRepositoryManager branch, File targetDirectory) {
         final File file = new File(targetDirectory, relativePath);
         try {
             final String type = Files.probeContentType(file.toPath());

@@ -5,7 +5,7 @@ import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
 import org.mule.api.vcs.client.BranchInfo;
-import org.mule.api.vcs.client.service.BranchFileManager;
+import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,7 +78,7 @@ public class ModifiedFileDiff implements Diff {
     }
 
     @Override
-    public void push(BranchFileManager branch, File targetDirectory) {
+    public void push(BranchRepositoryManager branch, File targetDirectory) {
         final Path file = new File(targetDirectory, relativePath).toPath();
         try {
             branch.updateFile(relativePath, Files.readAllBytes(file));

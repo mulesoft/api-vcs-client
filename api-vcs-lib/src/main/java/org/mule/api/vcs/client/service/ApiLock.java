@@ -4,12 +4,12 @@ public class ApiLock {
 
     private boolean success;
     private String owner;
-    private BranchFileManager branchFileManager;
+    private BranchRepositoryManager branchRepositoryManager;
 
-    public ApiLock(Boolean success, String owner, BranchFileManager branchFileManager) {
+    public ApiLock(Boolean success, String owner, BranchRepositoryManager branchRepositoryManager) {
         this.success = success;
         this.owner = owner;
-        this.branchFileManager = branchFileManager;
+        this.branchRepositoryManager = branchRepositoryManager;
     }
 
     public boolean isSuccess() {
@@ -20,7 +20,7 @@ public class ApiLock {
         return owner;
     }
 
-    public BranchFileManager getBranchFileManager() {
-        return branchFileManager;
+    public BranchRepositoryManager getBranchRepositoryManager() {
+        return branchRepositoryManager;
     }
 }

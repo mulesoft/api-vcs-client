@@ -2,7 +2,7 @@ package org.mule.api.vcs.client.service;
 
 import java.util.List;
 
-public interface BranchFileManager {
+public interface BranchRepositoryManager {
     boolean delete(String path);
 
     boolean newFile(String path, byte[] content, String mimeType);

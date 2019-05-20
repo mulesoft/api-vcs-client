@@ -1,6 +1,6 @@
 package org.mule.api.vcs.client.diff;
 
-import org.mule.api.vcs.client.service.BranchFileManager;
+import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -13,5 +13,5 @@ public interface Diff {
 
     void print(PrintWriter printWriter);
 
-    void push(BranchFileManager branch, File targetDirectory);
+    void push(BranchRepositoryManager branch, File targetDirectory);
 }

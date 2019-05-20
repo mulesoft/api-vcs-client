@@ -1,11 +1,14 @@
 package org.mule.api.vcs.client.service.impl;
 
+import org.mule.api.vcs.client.BranchInfo;
 import org.mule.api.vcs.client.service.*;
 import org.mule.designcenter.api.ApiDesignerXapiClient;
 import org.mule.designcenter.exceptions.ApiDesignerXapiException;
 import org.mule.designcenter.model.Lock;
+import org.mule.designcenter.model.ProjectCreate;
 import org.mule.designcenter.resource.projects.model.Project;
 import org.mule.designcenter.resource.projects.model.ProjectsGETHeader;
+import org.mule.designcenter.resource.projects.model.ProjectsPOSTHeader;
 import org.mule.designcenter.resource.projects.projectId.branches.branch.acquireLock.model.AcquireLockPOSTHeader;
 import org.mule.designcenter.resource.projects.projectId.branches.branch.releaseLock.model.ReleaseLockPOSTHeader;
 import org.mule.designcenter.resource.projects.projectId.branches.model.Branch;
@@ -15,18 +18,18 @@ import org.mule.designcenter.responses.ApiDesignerXapiResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ApiManagerFileManager implements ApiFileManager {
+public class ApiRepositoryFileManager implements RepositoryFileManager {
 
     private ApiDesignerXapiClient client;
 
     private final UserInfoProvider provider;
 
-    public ApiManagerFileManager(UserInfoProvider provider) {
+    public ApiRepositoryFileManager(UserInfoProvider provider) {
         this.provider = provider;
         this.client = ApiDesignerXapiClient.create();
     }
 
-    public ApiManagerFileManager(String url, UserInfoProvider provider) {
+    public ApiRepositoryFileManager(String url, UserInfoProvider provider) {
         client = ApiDesignerXapiClient.create(url);
         this.provider = provider;
     }
@@ -63,5 +66,11 @@ public class ApiManagerFileManager implements ApiFileManager {
     public List<ProjectInfo> projects() {
         final ApiDesignerXapiResponse<List<Project>> response = client.projects.get(new ProjectsGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return response.getBody().stream().map((p) -> new ProjectInfo(p.getId(), p.getName(), p.getDescription())).collect(Collectors.toList());
+    }
+
+    @Override
+    public BranchInfo init(ApiType apiType, String name, String description) {
+        final ApiDesignerXapiResponse<org.mule.designcenter.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
+        return new BranchInfo(post.getBody().getId(), "master");
     }
 }

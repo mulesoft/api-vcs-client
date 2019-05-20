@@ -4,7 +4,7 @@ import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.DeleteDelta;
 import com.github.difflib.patch.Patch;
-import org.mule.api.vcs.client.service.BranchFileManager;
+import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -51,7 +51,7 @@ public class DeleteFileDiff implements Diff {
     }
 
     @Override
-    public void push(BranchFileManager branch, File targetDirectory) {
+    public void push(BranchRepositoryManager branch, File targetDirectory) {
         branch.delete(relativePath);
     }
 

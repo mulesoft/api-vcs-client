@@ -32,30 +32,32 @@ public class BaseCommand {
 
     public UserInfoProvider getAccessTokenProvider() {
         final Optional<ApiVCSConfig> globalConfig = getGlobalConfig();
-        String userId;
-        if (userName != null) {
-            userId = this.userName;
-        } else if (globalConfig.isPresent() && globalConfig.get().getUserName().isPresent()) {
-            userId = globalConfig.get().getUserName().get();
-        } else {
-            throw new ConfigurationException("Missing --username");
-        }
+        Lazy<String> userId = Lazy.lazily(() -> {
+            if (userName != null) {
+                return this.userName;
+            } else if (globalConfig.isPresent() && globalConfig.get().getUserName().isPresent()) {
+                return globalConfig.get().getUserName().get();
+            } else {
+                throw new ConfigurationException("Missing --username parameter.");
+            }
+        });
 
-        String password;
-        if (this.password != null) {
-            password = this.password;
-        } else if (globalConfig.isPresent() && globalConfig.get().getPassword().isPresent()) {
-            password = globalConfig.get().getPassword().get();
-        } else {
-            throw new ConfigurationException("Missing --password");
-        }
+        Lazy<String> password = Lazy.lazily(() -> {
+            if (this.password != null) {
+                return this.password;
+            } else if (globalConfig.isPresent() && globalConfig.get().getPassword().isPresent()) {
+                return globalConfig.get().getPassword().get();
+            } else {
+                throw new ConfigurationException("Missing --password parameter");
+            }
+        });
 
         String orgId = null;
 
         if (this.organization != null) {
-            password = this.organization;
+            orgId = this.organization;
         } else if (globalConfig.isPresent() && globalConfig.get().getOrganization().isPresent()) {
-            password = globalConfig.get().getOrganization().get();
+            orgId = globalConfig.get().getOrganization().get();
         }
 
         return new CoreServicesUserInfoProvider(userId, password, orgId);
@@ -81,23 +83,21 @@ public class BaseCommand {
 
     static class CoreServicesUserInfoProvider implements UserInfoProvider {
 
-        private String username;
-        private String password;
+
         private Lazy<String> orgId;
         private Lazy<String> userId;
         private Lazy<String> accessToken;
 
 
-        public CoreServicesUserInfoProvider(String username, String password, String orgId) {
-            this.username = username;
-            this.password = password;
+        public CoreServicesUserInfoProvider(Lazy<String> username, Lazy<String> password, String orgId) {
+
             final Optional<String> maybeOrgId = Optional.ofNullable(orgId);
             this.orgId = maybeOrgId.map((id) -> Lazy.lazily(() -> id))
                     .orElse(Lazy.lazily(() -> coreServices().api.me.get(getAccessToken()).getBody().getUser().getOrganizationId()));
             this.userId = Lazy.lazily(() -> coreServices().api.me.get(getAccessToken()).getBody().getUser().getId());
             this.accessToken = Lazy.lazily(() -> {
                 try {
-                    final CoreServicesAPIReferenceResponse<LoginPOSTResponseBody> userData = coreServices().login.post(new LoginPOSTBody(username, password));
+                    final CoreServicesAPIReferenceResponse<LoginPOSTResponseBody> userData = coreServices().login.post(new LoginPOSTBody(username.get(), password.get()));
                     return userData.getBody().getAccessToken();
                 } catch (CoreServicesAPIReferenceException e) {
                     throw new RuntimeException("Invalid username password");

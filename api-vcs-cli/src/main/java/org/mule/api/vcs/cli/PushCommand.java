@@ -1,9 +1,9 @@
 package org.mule.api.vcs.cli;
 
 import org.mule.api.vcs.client.ApiVCSClient;
-import org.mule.api.vcs.client.SimpleResult;
+import org.mule.api.vcs.client.ValueResult;
 import org.mule.api.vcs.client.diff.MergingStrategy;
-import org.mule.api.vcs.client.service.impl.ApiManagerFileManager;
+import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
 import picocli.CommandLine.Command;
 
 import java.io.File;
@@ -21,8 +21,8 @@ public class PushCommand extends BaseCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(new File("."), new ApiManagerFileManager(getAccessTokenProvider()));
-        final SimpleResult master = apiVCSClient.push(mergingStrategy);
+        final ApiVCSClient apiVCSClient = new ApiVCSClient(new File("."), new ApiRepositoryFileManager(getAccessTokenProvider()));
+        final ValueResult master = apiVCSClient.push(mergingStrategy);
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
                 System.err.println("[Error] " + master.getMessage().get());

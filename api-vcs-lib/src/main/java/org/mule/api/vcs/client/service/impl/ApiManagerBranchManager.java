@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ApiManagerBranchManager implements BranchFileManager {
+public class ApiManagerBranchManager implements BranchRepositoryManager {
 
 
     private final UserInfoProvider provider;

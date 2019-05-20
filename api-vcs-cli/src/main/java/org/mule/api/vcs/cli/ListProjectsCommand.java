@@ -2,19 +2,14 @@ package org.mule.api.vcs.cli;
 
 import org.apache.commons.lang.StringUtils;
 import org.mule.api.vcs.client.ApiVCSClient;
-import org.mule.api.vcs.client.BranchInfo;
-import org.mule.api.vcs.client.SimpleResult;
 import org.mule.api.vcs.client.service.ProjectInfo;
-import org.mule.api.vcs.client.service.impl.ApiManagerFileManager;
+import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Parameters;
 
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
-
-import static picocli.CommandLine.Option;
 
 @Command(description = "List all projects under the given organization",
         name = "list", mixinStandardHelpOptions = true, version = "checksum 0.1")
@@ -23,7 +18,7 @@ public class ListProjectsCommand extends BaseCommand implements Callable<Integer
     @Override
     public Integer call() throws Exception {
         final File workingDirectory = new File(".");
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiManagerFileManager(getAccessTokenProvider()));
+        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager(getAccessTokenProvider()));
         final List<ProjectInfo> master = apiVCSClient.list();
         final Integer idLength = master.stream().map(p -> p.getProjectId().length()).max(Integer::compareTo).orElse(0);
         final Integer nameLength = master.stream().map(p -> p.getProjectName().length()).max(Integer::compareTo).orElse(0);

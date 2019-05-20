@@ -2,9 +2,9 @@ package org.mule.api.vcs.cli;
 
 import org.mule.api.vcs.client.ApiVCSClient;
 import org.mule.api.vcs.client.BranchInfo;
-import org.mule.api.vcs.client.SimpleResult;
+import org.mule.api.vcs.client.ValueResult;
 import org.mule.api.vcs.client.service.UserInfoProvider;
-import org.mule.api.vcs.client.service.impl.ApiManagerFileManager;
+import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
 import org.mule.designcenter.model.Project;
 import org.mule.designcenter.resource.projects.projectId.model.ProjectIdGETHeader;
 import org.mule.designcenter.responses.ApiDesignerXapiResponse;
@@ -20,10 +20,10 @@ import static picocli.CommandLine.Option;
 @Command(description = "Clones a project in the given location",
         name = "clone", mixinStandardHelpOptions = true, version = "checksum 0.1")
 public class CloneCommand extends BaseCommand implements Callable<Integer> {
-    @Parameters(description = "The project id to clone.", arity = "1")
+    @Parameters(description = "The project id to clone.", arity = "1", index = "0")
     String projectId;
 
-    @Parameters(description = "Target directory name", arity = "0..1")
+    @Parameters(description = "Target directory name", arity = "0..1", index = "1")
     String targetDirectory;
 
 
@@ -53,8 +53,8 @@ public class CloneCommand extends BaseCommand implements Callable<Integer> {
             return -1;
         }
 
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiManagerFileManager(accessTokenProvider));
-        final SimpleResult master = apiVCSClient.clone(new BranchInfo(projectId, Optional.ofNullable(branch).orElse("master")));
+        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager(accessTokenProvider));
+        final ValueResult master = apiVCSClient.clone(new BranchInfo(projectId, Optional.ofNullable(branch).orElse("master")));
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
                 System.err.println("[Error] " + master.getMessage().get());
