@@ -37,6 +37,11 @@ public class ApiManagerBranchManager implements BranchRepositoryManager {
     public boolean newFile(String path, byte[] content, String mimeType) {
         final List<FileContent> fileContents = Collections.singletonList(new FileContent(path, new String(content, BranchInfo.DEFAULT_CHARSET)));
         final ApiDesignerXapiResponse<List<File>> post = branch.save.post(fileContents, new SavePOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
+        final List<File> body = post.getBody();
+        for (File file : body) {
+            System.out.println("file = " + file.getPath());
+            System.out.println("file = " + file.getType());
+        }
         return true;
     }
 
@@ -50,11 +55,15 @@ public class ApiManagerBranchManager implements BranchRepositoryManager {
     @Override
     public List<ApiFile> listFiles() {
         final List<File> fileList = branch.files.get(new FilesGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken()).getBody();
-        return fileList.stream().map((file) -> new ApiFile(file.getPath(), ApiFileType.valueOf(file.getType()))).collect(Collectors.toList());
+        return fileList.stream()
+                .filter((file) -> file.getType().equalsIgnoreCase("FILE"))
+                .map((file) -> new ApiFile(file.getPath(), ApiFileType.valueOf(file.getType())))
+                .collect(Collectors.toList());
     }
 
     @Override
     public ApiFileContent fileContent(String path) {
+        System.out.println("path = " + path);
         final ApiDesignerXapiResponse<String> stringApiDesignerXapiResponse = branch.files.filePath(path).get(new FilePathGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         final String body = stringApiDesignerXapiResponse.getBody();
         return new ApiFileContent(body.getBytes(BranchInfo.DEFAULT_CHARSET), stringApiDesignerXapiResponse.getResponse().getMediaType().toString());

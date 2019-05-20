@@ -65,7 +65,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
     @Override
     public List<ProjectInfo> projects() {
         final ApiDesignerXapiResponse<List<Project>> response = client.projects.get(new ProjectsGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
-        return response.getBody().stream().map((p) -> new ProjectInfo(p.getId(), p.getName(), p.getDescription())).collect(Collectors.toList());
+        return response.getBody().stream().filter(p -> !p.getType().equalsIgnoreCase("Mule_Application")).map((p) -> new ProjectInfo(p.getId(), p.getName(), p.getDescription())).collect(Collectors.toList());
     }
 
     @Override

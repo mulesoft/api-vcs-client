@@ -24,13 +24,13 @@ public class ListProjectsCommand extends BaseCommand implements Callable<Integer
         final Integer nameLength = master.stream().map(p -> p.getProjectName().length()).max(Integer::compareTo).orElse(0);
         final Integer descriptionLength = master.stream().map(p -> Optional.ofNullable(p.getProjectDescription()).map(String::length).orElse(0)).max(Integer::compareTo).orElse(0);
         final String header = StringUtils.rightPad(" Id", idLength) + " | " + StringUtils.rightPad(" Name", nameLength) + " | " + StringUtils.rightPad(" Description", descriptionLength);
-        ;
         System.out.println();
         System.out.println(header);
         System.out.println(StringUtils.repeat("-", header.length()));
         for (ProjectInfo projectInfo : master) {
             System.out.println(StringUtils.rightPad(projectInfo.getProjectId(), idLength) + " | " + StringUtils.rightPad(projectInfo.getProjectName(), nameLength) + " | " + StringUtils.rightPad(Optional.ofNullable(projectInfo.getProjectDescription()).orElse(""), descriptionLength));
         }
+        System.out.println();
         return 1;
     }
 }

@@ -75,21 +75,26 @@ public class ApiVCSClient {
                     //pull
                     if (!diffs.isEmpty()) {
                         //pull
-                        checkoutBranch(branchInfo);
-                        //apply patches
-                        List<String> messages = new ArrayList<>();
-                        boolean success = applyDiffs(diffs, messages, mergingStrategy);
-                        if (success) {
-                            final List<Diff> newDiffs = calculateDiff(branchInfo);
-                            for (Diff newDiff : newDiffs) {
-                                newDiff.push(acquireLock.getBranchRepositoryManager(), targetDirectory);
+                        final ValueResult<Void> voidValueResult = checkoutBranch(branchInfo);
+                        if (voidValueResult.isSuccess()) {
+                            //apply patches
+                            List<String> messages = new ArrayList<>();
+                            boolean success = applyDiffs(diffs, messages, mergingStrategy);
+                            if (success) {
+                                final List<Diff> newDiffs = calculateDiff(branchInfo);
+                                for (Diff newDiff : newDiffs) {
+                                    newDiff.push(acquireLock.getBranchRepositoryManager(), targetDirectory);
+                                }
+                                return checkoutBranch(branchInfo);
+                            } else {
+                                return ValueResult.fail(messages.stream().reduce((l, r) -> l + "\n" + r).orElse(""));
                             }
-                            return ValueResult.SUCCESS;
                         } else {
-                            return ValueResult.fail(messages.stream().reduce((l, r) -> l + "\n" + r).orElse(""));
+                            return ValueResult.fail("No changes where detected.");
                         }
                     } else {
-                        return ValueResult.fail("No changes where detected.");
+                        //Nothing to push
+                        return ValueResult.SUCCESS;
                     }
                 } else {
                     return ValueResult.fail("Repository is locked by " + acquireLock.getOwner());
@@ -146,13 +151,15 @@ public class ApiVCSClient {
 
     private ValueResult<Void> checkoutBranch(BranchInfo config) {
         final File branchDirectory = getBranchDirectory(config.getBranch());
-        //Make sure workspace is clean
-        cleanupWorkspace();
-        //Clear internal branch directory
-        deleteDirectory(branchDirectory, pathname -> true);
+
         //
         final ApiLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
         if (apiLock.isSuccess()) {
+
+            //Make sure workspace is clean
+            cleanupWorkspace();
+            //Clear internal branch directory
+            deleteDirectory(branchDirectory, pathname -> true);
             final List<ApiFile> apiFiles = apiLock.getBranchRepositoryManager().listFiles();
 
             for (ApiFile file : apiFiles) {
@@ -226,7 +233,7 @@ public class ApiVCSClient {
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    if (filter.accept(dir.toFile())) {
+                    if (!filter.accept(dir.toFile())) {
                         return FileVisitResult.SKIP_SUBTREE;
                     } else {
                         return FileVisitResult.CONTINUE;
