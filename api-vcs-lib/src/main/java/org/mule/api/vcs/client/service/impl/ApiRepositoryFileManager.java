@@ -53,7 +53,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
 
     @Override
     public void releaseLock(String projectId, String branchName) {
-        final ApiDesignerXapiResponse<String> post = client.projects.projectId(projectId).branches.branch(branchName).releaseLock.post(new ReleaseLockPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
+        client.projects.projectId(projectId).branches.branch(branchName).releaseLock.post(new ReleaseLockPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
     }
 
     @Override
