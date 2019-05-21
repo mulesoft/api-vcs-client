@@ -1,5 +1,6 @@
 package org.mule.api.vcs.client.diff;
 
+import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.File;
@@ -9,6 +10,8 @@ public interface Diff {
 
     String OURS_FILE_EXTENSION = ".ours";
 
+    String THEIRS_FILE_EXTENSION = ".theirs";
+
     ApplyResult apply(File targetDirectory, MergingStrategy mergingStrategy);
 
     void print(PrintWriter printWriter);
@@ -17,7 +20,7 @@ public interface Diff {
 
     String getRelativePath();
 
-    String getOperationType();
+    MergeOperation getOperationType();
 
     ApplyResult unApply(File targetDirectory);
 }

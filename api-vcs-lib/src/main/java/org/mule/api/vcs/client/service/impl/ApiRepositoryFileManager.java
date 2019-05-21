@@ -36,7 +36,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
 
 
     @Override
-    public ApiLock acquireLock(String projectId, String branchName) {
+    public BranchRepositoryLock acquireLock(String projectId, String branchName) {
         try {
             final String userId = provider.getUserId();
             final String accessToken = provider.getAccessToken();
@@ -45,7 +45,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
             final ApiDesignerXapiResponse<Lock> post = branch.acquireLock.post(new AcquireLockPOSTHeader(orgId, userId), accessToken);
             final Boolean locked = post.getBody().getLocked();
             final ApiManagerBranchManager branchManager = new ApiManagerBranchManager(provider, branch);
-            return new ApiLock(locked, post.getBody().getName(), branchManager);
+            return new BranchRepositoryLock(locked, post.getBody().getName(), branchManager);
         } catch (ApiDesignerXapiException e) {
             throw new RuntimeException(e.getReason());
         }
@@ -69,7 +69,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public BranchInfo init(ApiType apiType, String name, String description) {
+    public BranchInfo create(ApiType apiType, String name, String description) {
         final ApiDesignerXapiResponse<org.mule.designcenter.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return new BranchInfo(post.getBody().getId(), "master");
     }

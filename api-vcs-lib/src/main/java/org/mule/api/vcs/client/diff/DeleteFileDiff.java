@@ -5,6 +5,7 @@ import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.DeleteDelta;
 import com.github.difflib.patch.Patch;
 import org.mule.api.vcs.client.BranchInfo;
+import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.*;
@@ -26,8 +27,8 @@ public class DeleteFileDiff implements Diff {
     }
 
     @Override
-    public String getOperationType() {
-        return "deleted:";
+    public MergeOperation getOperationType() {
+        return MergeOperation.DELETE;
     }
 
     @Override
@@ -49,11 +50,12 @@ public class DeleteFileDiff implements Diff {
             if (delete) {
                 return ApplyResult.SUCCESSFUL;
             } else {
-                return ApplyResult.fail("Unable to delete" + file.getAbsolutePath());
+                final String message = "Unable to delete" + file.getAbsolutePath();
+                return ApplyResult.fail(message);
             }
         } else {
             //ApiFile was already deleted
-            return ApplyResult.SUCCESSFUL;
+            return ApplyResult.success("File `" + relativePath + "` was deleted on the server and locally. Ignoring this change.");
         }
     }
 

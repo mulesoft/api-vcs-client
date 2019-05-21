@@ -21,6 +21,10 @@ public class ApplyResult {
 
     public static ApplyResult SUCCESSFUL = new ApplyResult(true, null);
 
+    public static ApplyResult success(String warningMessage) {
+        return new ApplyResult(true, warningMessage);
+    }
+
     public static ApplyResult fail(String message) {
         return new ApplyResult(false, message);
     }

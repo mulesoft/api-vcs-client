@@ -9,7 +9,7 @@ import picocli.CommandLine;
                 PullCommand.class,
                 PushCommand.class,
                 DiffCommand.class,
-                InitCommand.class,
+                CreateCommand.class,
                 StatusCommand.class,
                 RevertCommand.class,
                 RevertAllCommand.class

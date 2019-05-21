@@ -20,9 +20,9 @@ public class MockFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public ApiLock acquireLock(String projectId, String branchName) {
+    public BranchRepositoryLock acquireLock(String projectId, String branchName) {
         final int index = counter.getAndIncrement();
-        return new ApiLock(true, "acme", new MockBranchRepositoryManager(new File(directory, branchName + File.separator + "t" + index)));
+        return new BranchRepositoryLock(true, "acme", new MockBranchRepositoryManager(new File(directory, branchName + File.separator + "t" + index)));
     }
 
     @Override
@@ -46,7 +46,7 @@ public class MockFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public BranchInfo init(ApiType apiType, String name, String description) {
+    public BranchInfo create(ApiType apiType, String name, String description) {
         return null;
     }
 }

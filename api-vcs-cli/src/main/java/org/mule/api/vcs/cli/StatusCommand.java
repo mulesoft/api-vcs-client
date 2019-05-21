@@ -33,7 +33,7 @@ public class StatusCommand extends BaseCommand implements Callable<Integer> {
             System.out.println();
             final PrintWriter printWriter = new PrintWriter(System.out);
             for (Diff diff : mayBeDiffs.doGetValue()) {
-                printWriter.println("\t" + diff.getOperationType() + " " + diff.getRelativePath());
+                printWriter.println("\t" + diff.getOperationType().getLabel() + " " + diff.getRelativePath());
             }
             printWriter.flush();
             System.out.println();

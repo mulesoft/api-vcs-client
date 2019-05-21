@@ -5,6 +5,8 @@ import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.InsertDelta;
 import com.github.difflib.patch.Patch;
 import org.mule.api.vcs.client.BranchInfo;
+import org.mule.api.vcs.client.MergeListener;
+import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.*;
@@ -27,9 +29,9 @@ public class NewFileDiff implements Diff {
         if (file.exists()) {
             switch (mergingStrategy) {
                 case KEEP_BOTH:
-                    createFile(new File(targetDirectory, relativePath + Diff.OURS_FILE_EXTENSION));
+                    createFile(new File(targetDirectory, relativePath + Diff.THEIRS_FILE_EXTENSION));
                     break;
-                case KEEP_OURS:
+                case KEEP_THEIRS:
                     createFile(file);
                     break;
             }
@@ -86,8 +88,8 @@ public class NewFileDiff implements Diff {
     }
 
     @Override
-    public String getOperationType() {
-        return "new file:";
+    public MergeOperation getOperationType() {
+        return MergeOperation.NEW_FILE;
     }
 
     @Override

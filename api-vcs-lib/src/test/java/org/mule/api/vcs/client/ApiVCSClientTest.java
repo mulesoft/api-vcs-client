@@ -158,7 +158,7 @@ public class ApiVCSClientTest {
         final File api = new File(workspace, "Api.raml");
         assertThat("MyLib should not exist", myLib.exists(), is(false));
         assertThat("Api should exist", api.exists(), is(true));
-        client.pull(MergingStrategy.KEEP_THEIRS);
+        client.pull(MergingStrategy.KEEP_THEIRS, new DefaultMergeListener());
         assertThat("MyLib should exist", myLib.exists(), is(true));
         assertThat("Api should exist", api.exists(), is(true));
     }
@@ -184,7 +184,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
         assertThat("Api should exist", api.exists(), is(true));
-        final ValueResult pull = client.pull(MergingStrategy.KEEP_THEIRS);
+        final ValueResult pull = client.pull(MergingStrategy.KEEP_THEIRS, new DefaultMergeListener());
         assertThat(pull.isSuccess(), is(true));
         assertThat("MyLib should exist", myLib.exists(), is(true));
         assertThat("Api should exist", api.exists(), is(true));
@@ -213,7 +213,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(MergingStrategy.KEEP_THEIRS);
+        final ValueResult pull = client.pull(MergingStrategy.KEEP_THEIRS, new DefaultMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -239,7 +239,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(MergingStrategy.KEEP_OURS);
+        final ValueResult pull = client.pull(MergingStrategy.KEEP_OURS, new DefaultMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -268,7 +268,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(MergingStrategy.KEEP_OURS);
+        final ValueResult pull = client.pull(MergingStrategy.KEEP_OURS, new DefaultMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -294,7 +294,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(MergingStrategy.KEEP_OURS);
+        final ValueResult pull = client.pull(MergingStrategy.KEEP_OURS, new DefaultMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));

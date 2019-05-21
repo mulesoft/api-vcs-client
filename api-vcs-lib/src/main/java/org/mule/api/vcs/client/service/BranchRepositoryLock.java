@@ -1,12 +1,12 @@
 package org.mule.api.vcs.client.service;
 
-public class ApiLock {
+public class BranchRepositoryLock {
 
     private boolean success;
     private String owner;
     private BranchRepositoryManager branchRepositoryManager;
 
-    public ApiLock(Boolean success, String owner, BranchRepositoryManager branchRepositoryManager) {
+    public BranchRepositoryLock(Boolean success, String owner, BranchRepositoryManager branchRepositoryManager) {
         this.success = success;
         this.owner = owner;
         this.branchRepositoryManager = branchRepositoryManager;

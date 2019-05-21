@@ -50,17 +50,23 @@ public class ApiVCSClient {
         }
     }
 
-    public ValueResult<Void> init(MergingStrategy mergingStrategy, ApiType apiType, String name, String description) {
+    public ValueResult<Void> create(MergeListener listener, ApiType apiType, String name, String description) {
         try {
-            final BranchInfo branchInfo = fileManager.init(apiType, name, description);
-            storeConfig(branchInfo.getProjectId(), branchInfo.getBranch());
-            return pull(mergingStrategy);
+            final File file = targetDirectory;
+            if (file.exists()) {
+                return ValueResult.fail("Folder " + name + " already exists");
+            } else {
+                file.mkdirs();
+                final BranchInfo branchInfo = fileManager.create(apiType, name, description);
+                storeConfig(branchInfo.getProjectId(), branchInfo.getBranch());
+                return pull(MergingStrategy.KEEP_BOTH, listener);
+            }
         } catch (Exception e) {
             return ValueResult.fail(e.getMessage());
         }
     }
 
-    public ValueResult<Void> push(MergingStrategy mergingStrategy) {
+    public ValueResult<Void> push(MergingStrategy mergingStrategy, MergeListener listener) {
         final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
         if (mayBeBranchInfo.isFailure()) {
             return mayBeBranchInfo.asFailure();
@@ -68,36 +74,33 @@ public class ApiVCSClient {
             BranchInfo branchInfo = mayBeBranchInfo.getValue().get();
             final String branchName = branchInfo.getBranch();
             try {
-                final ApiLock acquireLock = fileManager.acquireLock(branchInfo.getProjectId(), branchName);
+                final BranchRepositoryLock acquireLock = fileManager.acquireLock(branchInfo.getProjectId(), branchName);
                 if (acquireLock.isSuccess()) {
                     //Calculate patch
                     final List<Diff> diffs = calculateDiff(branchInfo);
                     //pull
                     if (!diffs.isEmpty()) {
                         //pull
-                        final ValueResult<Void> voidValueResult = checkoutBranch(branchInfo);
+                        final ValueResult<Void> voidValueResult = pull(acquireLock, branchInfo, mergingStrategy, listener);
                         if (voidValueResult.isSuccess()) {
                             //apply patches
-                            List<String> messages = new ArrayList<>();
-                            boolean success = applyDiffs(diffs, messages, mergingStrategy);
-                            if (success) {
-                                final List<Diff> newDiffs = calculateDiff(branchInfo);
-                                for (Diff newDiff : newDiffs) {
-                                    newDiff.push(acquireLock.getBranchRepositoryManager(), targetDirectory);
-                                }
-                                return checkoutBranch(branchInfo);
-                            } else {
-                                return ValueResult.fail(messages.stream().reduce((l, r) -> l + "\n" + r).orElse(""));
+                            final List<Diff> newDiffs = calculateDiff(branchInfo);
+                            listener.startPushing();
+                            for (Diff newDiff : newDiffs) {
+                                newDiff.push(acquireLock.getBranchRepositoryManager(), targetDirectory);
+                                listener.pushing(newDiff);
                             }
+                            applyDiffsOn(diffs, mergingStrategy, new DefaultMergeListener(), getBranchDirectory(branchName));
+                            return ValueResult.SUCCESS;
                         } else {
-                            return ValueResult.fail("No changes where detected.");
+                            return voidValueResult;
                         }
                     } else {
                         //Nothing to push
                         return ValueResult.SUCCESS;
                     }
                 } else {
-                    return ValueResult.fail("Repository is locked by " + acquireLock.getOwner());
+                    return repositoryAlreadyLocked(acquireLock);
                 }
             } finally {
                 fileManager.releaseLock(branchInfo.getProjectId(), branchName);
@@ -105,27 +108,68 @@ public class ApiVCSClient {
         }
     }
 
-    public ValueResult<Void> pull(MergingStrategy mergingStrategy) {
 
+    private ValueResult<Void> repositoryAlreadyLocked(BranchRepositoryLock acquireLock) {
+        return ValueResult.fail("Repository is locked by " + acquireLock.getOwner());
+    }
+
+    public synchronized ValueResult<Void> pull(MergingStrategy mergingStrategy, MergeListener listener) {
         final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
         if (mayBeBranchInfo.isFailure()) {
             return mayBeBranchInfo.asFailure();
         } else {
-            final BranchInfo branchInfo = mayBeBranchInfo.getValue().get();
-            final List<Diff> diffs = calculateDiff(branchInfo);
-            if (diffs.isEmpty()) {
-                return checkoutBranch(branchInfo);
-            } else {
-                checkoutBranch(branchInfo);
-                final List<String> messages = new ArrayList<>();
-                final boolean success = applyDiffs(diffs, messages, mergingStrategy);
-                if (success) {
-                    return ValueResult.SUCCESS;
-                } else {
-                    return ValueResult.fail(messages.stream().reduce((l, r) -> l + "\n" + r).orElse(""));
+            final BranchInfo config = mayBeBranchInfo.getValue().get();
+            final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
+            if (apiLock.isSuccess()) {
+                try {
+                    return pull(apiLock, config, mergingStrategy, listener);
+                } finally {
+                    fileManager.releaseLock(config.getProjectId(), config.getBranch());
                 }
+            } else {
+                return repositoryAlreadyLocked(apiLock);
             }
         }
+    }
+
+    private ValueResult<Void> pull(BranchRepositoryLock apiLock, BranchInfo config, MergingStrategy mergingStrategy, MergeListener listener) {
+        final File staging = getStagingDirectory();
+        try {
+            final ValueResult<Void> voidValueResult = copyContentTo(apiLock, staging);
+            return voidValueResult.flatMap((success) -> {
+                final File branchDirectory = getBranchDirectory(config.getBranch());
+                final List<Diff> diffs = calculateDiff(staging, branchDirectory);
+                final List<ApplyResult> applyResults = applyDiffsOn(diffs, mergingStrategy, listener, targetDirectory);
+                applyDiffsOn(diffs, mergingStrategy, new DefaultMergeListener(), branchDirectory);
+                final boolean failure = applyResults.stream().anyMatch((a) -> !a.isSuccess());
+                if (failure) {
+                    final String errorMessage = applyResults.stream().filter(a -> !a.isSuccess()).map(a -> a.getMessage().get()).reduce((l, r) -> l + "\n" + r).orElse("");
+                    return ValueResult.fail(errorMessage);
+                } else {
+                    return ValueResult.SUCCESS;
+                }
+            });
+        } finally {
+            deleteDirectory(staging);
+        }
+    }
+
+    private File getStagingDirectory() {
+        final File stagingDirectory = new File(getApiVCSDirectory(), "tmp" + File.separator + "staging");
+        stagingDirectory.mkdirs();
+        return stagingDirectory;
+    }
+
+    private List<ApplyResult> applyDiffsOn(List<Diff> diffs, MergingStrategy mergingStrategy, MergeListener listener, File targetDirectory) {
+        listener.startApplying(diffs);
+        //Apply changes to both the branch and the working directory
+        final List<ApplyResult> result = diffs.stream().map((diff) -> {
+            final ApplyResult apply = diff.apply(targetDirectory, mergingStrategy);
+            listener.applied(diff, apply);
+            return apply;
+        }).collect(Collectors.toList());
+        listener.endApplying(diffs, result);
+        return result;
     }
 
     public ValueResult<List<Diff>> diff() {
@@ -142,7 +186,7 @@ public class ApiVCSClient {
     private List<Diff> calculateDiff(BranchInfo branchInfo) {
         final String branchName = branchInfo.getBranch();
         final File branchDirectory = getBranchDirectory(branchName);
-        return calculateDiff(targetDirectory, branchDirectory, ".");
+        return calculateDiff(targetDirectory, branchDirectory);
     }
 
     public List<ProjectInfo> list() {
@@ -151,47 +195,47 @@ public class ApiVCSClient {
 
     private ValueResult<Void> checkoutBranch(BranchInfo config) {
         final File branchDirectory = getBranchDirectory(config.getBranch());
-
         //
-        final ApiLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
+        final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
         if (apiLock.isSuccess()) {
-
             //Make sure workspace is clean
             cleanupWorkspace();
             //Clear internal branch directory
-            deleteDirectory(branchDirectory, pathname -> true);
-            final List<ApiFile> apiFiles = apiLock.getBranchRepositoryManager().listFiles();
+            deleteDirectory(branchDirectory);
+            return copyContentTo(apiLock, this.targetDirectory, branchDirectory);
+        } else {
+            return repositoryAlreadyLocked(apiLock);
+        }
+    }
 
-            for (ApiFile file : apiFiles) {
-                try {
-                    //Filter exchange_modules
-                    if (!file.getPath().startsWith("exchange_modules/")) {
-                        ApiFileContent fileGetResponse = apiLock.getBranchRepositoryManager().fileContent(file.getPath());
+    private void deleteDirectory(File branchDirectory) {
+        deleteDirectory(branchDirectory, pathname -> true);
+    }
 
-                        File targetFile = new File(targetDirectory, file.getPath());
+    private ValueResult<Void> copyContentTo(BranchRepositoryLock apiLock, File... targetDirectory) {
+        final List<ApiFile> apiFiles = apiLock.getBranchRepositoryManager().listFiles();
+
+        for (ApiFile file : apiFiles) {
+            try {
+                //Filter exchange_modules
+                if (!file.getPath().startsWith("exchange_modules/")) {
+                    ApiFileContent fileGetResponse = apiLock.getBranchRepositoryManager().fileContent(file.getPath());
+                    for (File directory : targetDirectory) {
+                        File targetFile = new File(directory, file.getPath());
                         //Make sure container folder exists
                         if (!targetFile.getParentFile().exists())
                             targetFile.getParentFile().mkdirs();
                         try (FileOutputStream writer = new FileOutputStream(targetFile)) {
                             writer.write(fileGetResponse.getContent());
                         }
-                        File branchTargetDir = new File(branchDirectory, file.getPath());
-                        //Make sure container folder exists
-                        if (!branchTargetDir.getParentFile().exists())
-                            branchTargetDir.getParentFile().mkdirs();
-                        try (FileOutputStream writer = new FileOutputStream(branchTargetDir)) {
-                            writer.write(fileGetResponse.getContent());
-                        }
                     }
-                } catch (IOException e) {
-                    return ValueResult.fail("Problem while trying to write file " + file.getPath() + ".");
-                }
-            }
-            return ValueResult.SUCCESS;
 
-        } else {
-            return ValueResult.fail("Repository is locked by " + apiLock.getOwner());
+                }
+            } catch (IOException e) {
+                return ValueResult.fail("Problem while trying to write file " + file.getPath() + ".");
+            }
         }
+        return ValueResult.SUCCESS;
     }
 
     protected File getBranchDirectory(String branch) {
@@ -201,18 +245,6 @@ public class ApiVCSClient {
 
     protected File getApiVCSDirectory() {
         return new File(targetDirectory, APIVCS_FOLDER_NAME);
-    }
-
-    private boolean applyDiffs(List<Diff> diffs, List<String> messages, MergingStrategy mergingStrategy) {
-        boolean success = true;
-        for (Diff diff : diffs) {
-            final ApplyResult apply = diff.apply(targetDirectory, mergingStrategy);
-            success = apply.isSuccess() && success;
-            if (apply.getMessage().isPresent()) {
-                messages.add(apply.getMessage().get());
-            }
-        }
-        return success;
     }
 
 
@@ -260,6 +292,10 @@ public class ApiVCSClient {
         }
     }
 
+
+    private List<Diff> calculateDiff(File source, File target) {
+        return calculateDiff(source, target, ".");
+    }
 
     private List<Diff> calculateDiff(File source, File target, String relativePath) {
         final ArrayList<Diff> diffs = new ArrayList<>();

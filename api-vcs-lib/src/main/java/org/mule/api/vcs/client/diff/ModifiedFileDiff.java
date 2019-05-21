@@ -5,6 +5,8 @@ import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
 import org.mule.api.vcs.client.BranchInfo;
+import org.mule.api.vcs.client.MergeListener;
+import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.*;
@@ -33,13 +35,13 @@ public class ModifiedFileDiff implements Diff {
             final List<String> patch;
             try {
                 patch = DiffUtils.patch(source, diff);
-                Files.write(theFilePath, patch, BranchInfo.DEFAULT_CHARSET, StandardOpenOption.WRITE);
+                Files.write(theFilePath, patch, BranchInfo.DEFAULT_CHARSET);
             } catch (PatchFailedException e) {
                 switch (mergingStrategy) {
-                    case KEEP_OURS:
+                    case KEEP_THEIRS:
                         try {
                             final List<String> ours = DiffUtils.patch(originalLines, diff);
-                            Files.write(theFilePath, ours, BranchInfo.DEFAULT_CHARSET, StandardOpenOption.WRITE);
+                            Files.write(theFilePath, ours, BranchInfo.DEFAULT_CHARSET);
                         } catch (PatchFailedException ex) {
                             //This should not happen
                             return ApplyResult.fail("FATAL ERROR while trying to apply patch." + ex.getMessage());
@@ -47,8 +49,13 @@ public class ModifiedFileDiff implements Diff {
                         break;
                     case KEEP_BOTH:
                         try {
-                            final List<String> ours = DiffUtils.patch(originalLines, diff);
-                            Files.write(new File(targetDirectory, relativePath + Diff.OURS_FILE_EXTENSION).toPath(), ours, BranchInfo.DEFAULT_CHARSET, StandardOpenOption.WRITE);
+                            //Keep the three files so that we can do a three-way-diff
+                            final List<String> theirsContent = DiffUtils.patch(originalLines, diff);
+                            final Path theirsPath = new File(targetDirectory, relativePath + Diff.THEIRS_FILE_EXTENSION).toPath();
+                            final Path oursPath = new File(targetDirectory, relativePath + Diff.OURS_FILE_EXTENSION).toPath();
+                            Files.write(theirsPath, theirsContent, BranchInfo.DEFAULT_CHARSET);
+                            Files.copy(theFilePath, oursPath);
+                            Files.write(theFilePath, originalLines, BranchInfo.DEFAULT_CHARSET);
                         } catch (PatchFailedException ex) {
                             //This should not happen
                             return ApplyResult.fail("FATAL ERROR while trying to apply patch." + ex.getMessage());
@@ -58,10 +65,9 @@ public class ModifiedFileDiff implements Diff {
                 //We should some how patch it and
                 return ApplyResult.fail("Error while trying to apply patch on `" + relativePath + "`. Reason: " + e.getMessage());
             }
-
             return ApplyResult.SUCCESSFUL;
         } catch (IOException e) {
-            return ApplyResult.fail("Error while trying to write `" + relativePath + "`. Reason :" + e.getMessage());
+            return failError(e);
         }
     }
 
@@ -77,9 +83,10 @@ public class ModifiedFileDiff implements Diff {
 
     @Override
     public void push(BranchRepositoryManager branch, File targetDirectory) {
-        final Path file = new File(targetDirectory, relativePath).toPath();
         try {
-            branch.updateFile(relativePath, Files.readAllBytes(file));
+            final Path fileToPush = new File(targetDirectory, relativePath).getCanonicalFile().toPath();
+            final String relativePath = targetDirectory.toPath().relativize(fileToPush).toString();
+            branch.updateFile(relativePath, Files.readAllBytes(fileToPush));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -91,18 +98,22 @@ public class ModifiedFileDiff implements Diff {
     }
 
     @Override
-    public String getOperationType() {
-        return "modified:";
+    public MergeOperation getOperationType() {
+        return MergeOperation.MODIFIED;
     }
 
     @Override
     public ApplyResult unApply(File targetDirectory) {
-        final File file = new File(targetDirectory, relativePath);
-        try(final OutputStreamWriter outputStreamWriter = new OutputStreamWriter(new FileOutputStream(file), BranchInfo.DEFAULT_CHARSET);) {
-            outputStreamWriter.write(originalLines.stream().reduce((l, r) -> l + "\n" + r).orElse(""));
+        final Path theFilePath = new File(targetDirectory, relativePath).toPath();
+        try {
+            Files.write(theFilePath, originalLines, BranchInfo.DEFAULT_CHARSET);
         } catch (IOException e) {
-            return ApplyResult.fail(e.getMessage());
+            return failError(e);
         }
         return ApplyResult.SUCCESSFUL;
+    }
+
+    private ApplyResult failError(IOException e) {
+        return ApplyResult.fail("[FATAL] Error while trying to write `" + relativePath + "`. Reason :" + e.getMessage());
     }
 }

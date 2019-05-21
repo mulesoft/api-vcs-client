@@ -69,12 +69,14 @@ public class CloneCommand extends BaseCommand implements Callable<Integer> {
         }
 
         final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager(accessTokenProvider));
+        System.out.println("Start clone for project: " + projectName);
         final ValueResult master = apiVCSClient.clone(new BranchInfo(projectId, Optional.ofNullable(branch).orElse("master")));
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
                 System.err.println("[Error] " + master.getMessage().get());
             return -1;
         } else {
+            System.out.println("Project was cloned successfully.");
             return 1;
         }
 

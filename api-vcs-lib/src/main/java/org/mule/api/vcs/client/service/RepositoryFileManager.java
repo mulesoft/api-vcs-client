@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface RepositoryFileManager {
 
-    ApiLock acquireLock(String projectId, String branchName);
+    BranchRepositoryLock acquireLock(String projectId, String branchName);
 
     void releaseLock(String projectId, String branchName);
 
@@ -14,6 +14,6 @@ public interface RepositoryFileManager {
 
     List<ProjectInfo> projects();
 
-    BranchInfo init(ApiType apiType, String name, String description);
+    BranchInfo create(ApiType apiType, String name, String description);
 
 }

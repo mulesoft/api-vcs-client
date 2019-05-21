@@ -35,21 +35,19 @@ public class ApiManagerBranchManager implements BranchRepositoryManager {
 
     @Override
     public boolean newFile(String path, byte[] content, String mimeType) {
-        final List<FileContent> fileContents = Collections.singletonList(new FileContent(path, new String(content, BranchInfo.DEFAULT_CHARSET)));
+        return doSave(path, content);
+    }
+
+    private boolean doSave(String path, byte[] content) {
+        final String fileContent = new String(content, BranchInfo.DEFAULT_CHARSET);
+        final List<FileContent> fileContents = Collections.singletonList(new FileContent(path, fileContent));
         final ApiDesignerXapiResponse<List<File>> post = branch.save.post(fileContents, new SavePOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
-        final List<File> body = post.getBody();
-        for (File file : body) {
-            System.out.println("file = " + file.getPath());
-            System.out.println("file = " + file.getType());
-        }
         return true;
     }
 
     @Override
     public boolean updateFile(String path, byte[] content) {
-        final List<FileContent> fileContents = Collections.singletonList(new FileContent(path, new String(content, BranchInfo.DEFAULT_CHARSET)));
-        final ApiDesignerXapiResponse<List<File>> post = branch.save.post(fileContents, new SavePOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
-        return true;
+        return doSave(path, content);
     }
 
     @Override
@@ -63,7 +61,6 @@ public class ApiManagerBranchManager implements BranchRepositoryManager {
 
     @Override
     public ApiFileContent fileContent(String path) {
-        System.out.println("path = " + path);
         final ApiDesignerXapiResponse<String> stringApiDesignerXapiResponse = branch.files.filePath(path).get(new FilePathGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         final String body = stringApiDesignerXapiResponse.getBody();
         return new ApiFileContent(body.getBytes(BranchInfo.DEFAULT_CHARSET), stringApiDesignerXapiResponse.getResponse().getMediaType().toString());
