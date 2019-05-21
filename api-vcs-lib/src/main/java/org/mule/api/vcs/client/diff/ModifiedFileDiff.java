@@ -63,7 +63,7 @@ public class ModifiedFileDiff implements Diff {
                         break;
                 }
                 //We should some how patch it and
-                return ApplyResult.fail("Error while trying to apply patch on `" + relativePath + "`. Reason: " + e.getMessage());
+                return ApplyResult.fail(e.getMessage() + " resolution strategy `" + mergingStrategy + "`");
             }
             return ApplyResult.SUCCESSFUL;
         } catch (IOException e) {

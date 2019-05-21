@@ -12,7 +12,7 @@ class MergeListenerLogger extends DefaultMergeListener {
         if (apply.isSuccess()) {
             System.out.println("\t" + diff.getOperationType().getLabel() + " " + diff.getRelativePath());
         } else {
-            System.out.println("\t" + "conflict: " + apply.getMessage().orElse(diff.getRelativePath()));
+            System.out.println("\t" + "conflict: " + diff.getRelativePath() + ".Reason: " + apply.getMessage().orElse(diff.getRelativePath()));
         }
     }
 

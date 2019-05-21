@@ -36,13 +36,16 @@ public class PushCommand extends BaseCommand implements Callable<Integer> {
             @Override
             public void endApplying(List<Diff> diffs, List<ApplyResult> result) {
                 if (diffs.size() > 0) {
-                    System.out.println("End of merge.");
+                    final boolean failure = result.stream().anyMatch((a) -> !a.isSuccess());
+                    if (failure) {
+                        System.out.println("Merge has conflicts. Fix them before next push.");
+                    } else {
+                        System.out.println("Merge was successful.");
+                    }
                 }
             }
         });
         if (master.isFailure()) {
-            if (master.getMessage().isPresent())
-                System.err.println("[Error] " + master.getMessage().get());
             return -1;
         } else {
             return 1;
