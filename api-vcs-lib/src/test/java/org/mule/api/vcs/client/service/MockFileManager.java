@@ -49,4 +49,9 @@ public class MockFileManager implements RepositoryFileManager {
     public BranchInfo create(ApiType apiType, String name, String description) {
         return null;
     }
+
+    @Override
+    public String getGroupId() {
+        return "";
+    }
 }

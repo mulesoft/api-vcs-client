@@ -73,4 +73,9 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
         final ApiDesignerXapiResponse<org.mule.designcenter.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return new BranchInfo(post.getBody().getId(), "master");
     }
+
+    @Override
+    public String getGroupId() {
+        return provider.getOrgId();
+    }
 }

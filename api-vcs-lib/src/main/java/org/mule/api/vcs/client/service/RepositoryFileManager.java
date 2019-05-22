@@ -16,4 +16,6 @@ public interface RepositoryFileManager {
 
     BranchInfo create(ApiType apiType, String name, String description);
 
+    String getGroupId();
+
 }

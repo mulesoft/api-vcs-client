@@ -22,6 +22,7 @@ public class ApiVCSClient {
     public static final String PROJECT_ID_KEY = "projectId";
     public static final String BRANCH_KEY = "branch";
     public static final String APIVCS_FOLDER_NAME = ".apivcs";
+    public static final String GROUP_ID_KEY = "groupId";
     private File targetDirectory;
     private RepositoryFileManager fileManager;
 
@@ -407,6 +408,7 @@ public class ApiVCSClient {
         final Properties properties = new Properties();
         properties.put(PROJECT_ID_KEY, projectId);
         properties.put(BRANCH_KEY, branch);
+        properties.put(GROUP_ID_KEY, fileManager.getGroupId());
         try (FileOutputStream fileOutputStream = new FileOutputStream(config)) {
             properties.store(fileOutputStream, "");
         } catch (IOException e) {
