@@ -3,17 +3,13 @@ package org.mule.api.vcs.client.service;
 import org.mule.api.vcs.client.BranchInfo;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MockFileManager implements RepositoryFileManager {
 
     private File directory;
-    private AtomicInteger counter = new AtomicInteger(0);
+    private Map<String, Integer> counters = new HashMap<>();
 
     public MockFileManager(File directory) {
         this.directory = directory;
@@ -21,8 +17,17 @@ public class MockFileManager implements RepositoryFileManager {
 
     @Override
     public BranchRepositoryLock acquireLock(String projectId, String branchName) {
-        final int index = counter.getAndIncrement();
-        return new BranchRepositoryLock(true, "acme", new MockBranchRepositoryManager(new File(directory, branchName + File.separator + "t" + index)));
+        int counter = Optional.ofNullable(counters.get(branchName)).orElse(0);
+        final File branchDirectory = getBranchDirectory(branchName, counter);
+        if (getBranchDirectory(branchName, counter + 1).exists()) {
+            counter = counter + 1;
+        }
+        counters.put(branchName, counter);
+        return new BranchRepositoryLock(true, "acme", new MockBranchRepositoryManager(branchDirectory));
+    }
+
+    private File getBranchDirectory(String branchName, int counter) {
+        return new File(directory, branchName + File.separator + "t" + counter);
     }
 
     @Override

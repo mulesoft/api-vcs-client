@@ -26,7 +26,7 @@ public class RevertCommand extends BaseCommand implements Callable<Integer> {
         } else {
             final ValueResult<String> valueResult = apiVCSClient.currentBranch();
             System.out.println();
-            System.out.println("File reverted "+ relativePath);
+            System.out.println("File reverted "+ relativePath + " successfully.");
             System.out.println();
             return 1;
         }

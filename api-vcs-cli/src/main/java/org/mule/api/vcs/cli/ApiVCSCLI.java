@@ -1,7 +1,7 @@
 package org.mule.api.vcs.cli;
 
 import org.mule.api.vcs.cli.exceptions.ConfigurationException;
-import org.mule.designcenter.exceptions.ApiDesignerXapiException;
+import org.mule.apidesigner.exceptions.ApiDesignerXapiException;
 import picocli.CommandLine;
 
 public class ApiVCSCLI {

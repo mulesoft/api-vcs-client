@@ -4,6 +4,7 @@ import org.mule.api.vcs.client.ApiVCSClient;
 import org.mule.api.vcs.client.ValueResult;
 import org.mule.api.vcs.client.service.ApiType;
 import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
@@ -16,8 +17,8 @@ import static picocli.CommandLine.Option;
         name = "create", mixinStandardHelpOptions = true, version = "checksum 0.1")
 public class CreateCommand extends BaseCommand implements Callable<Integer> {
 
-    @Option(names = {"-t", "--type"}, description = "The type of project by default is `raml`")
-    ApiType apiType = ApiType.Raml;
+    @Option(names = {"-t", "--type"}, description = "The type of project by default is `RAML`", showDefaultValue = CommandLine.Help.Visibility.ALWAYS)
+    ApiType apiType = ApiType.RAML;
 
     @Parameters(description = "The name of the project if not specified used the name of the current folder", arity = "1")
     String name;
@@ -38,6 +39,7 @@ public class CreateCommand extends BaseCommand implements Callable<Integer> {
             return -1;
         } else {
             System.out.println("Project `" + name + "` created successfully.");
+            System.out.println();
             return 1;
         }
     }

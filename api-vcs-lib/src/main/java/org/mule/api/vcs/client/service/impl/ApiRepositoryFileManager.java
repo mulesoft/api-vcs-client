@@ -2,18 +2,18 @@ package org.mule.api.vcs.client.service.impl;
 
 import org.mule.api.vcs.client.BranchInfo;
 import org.mule.api.vcs.client.service.*;
-import org.mule.designcenter.api.ApiDesignerXapiClient;
-import org.mule.designcenter.exceptions.ApiDesignerXapiException;
-import org.mule.designcenter.model.Lock;
-import org.mule.designcenter.model.ProjectCreate;
-import org.mule.designcenter.resource.projects.model.Project;
-import org.mule.designcenter.resource.projects.model.ProjectsGETHeader;
-import org.mule.designcenter.resource.projects.model.ProjectsPOSTHeader;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.acquireLock.model.AcquireLockPOSTHeader;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.releaseLock.model.ReleaseLockPOSTHeader;
-import org.mule.designcenter.resource.projects.projectId.branches.model.Branch;
-import org.mule.designcenter.resource.projects.projectId.branches.model.BranchesGETHeader;
-import org.mule.designcenter.responses.ApiDesignerXapiResponse;
+import org.mule.apidesigner.api.ApiDesignerXapiClient;
+import org.mule.apidesigner.exceptions.ApiDesignerXapiException;
+import org.mule.apidesigner.model.Lock;
+import org.mule.apidesigner.model.ProjectCreate;
+import org.mule.apidesigner.resource.projects.model.Project;
+import org.mule.apidesigner.resource.projects.model.ProjectsGETHeader;
+import org.mule.apidesigner.resource.projects.model.ProjectsPOSTHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.acquireLock.model.AcquireLockPOSTHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.releaseLock.model.ReleaseLockPOSTHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.model.Branch;
+import org.mule.apidesigner.resource.projects.projectId.branches.model.BranchesGETHeader;
+import org.mule.apidesigner.responses.ApiDesignerXapiResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +41,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
             final String userId = provider.getUserId();
             final String accessToken = provider.getAccessToken();
             final String orgId = provider.getOrgId();
-            final org.mule.designcenter.resource.projects.projectId.branches.branch.Branch branch = client.projects.projectId(projectId).branches.branch(branchName);
+            final org.mule.apidesigner.resource.projects.projectId.branches.branch.Branch branch = client.projects.projectId(projectId).branches.branch(branchName);
             final ApiDesignerXapiResponse<Lock> post = branch.acquireLock.post(new AcquireLockPOSTHeader(orgId, userId), accessToken);
             final Boolean locked = post.getBody().getLocked();
             final ApiManagerBranchManager branchManager = new ApiManagerBranchManager(provider, branch);
@@ -70,7 +70,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
 
     @Override
     public BranchInfo create(ApiType apiType, String name, String description) {
-        final ApiDesignerXapiResponse<org.mule.designcenter.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
+        final ApiDesignerXapiResponse<org.mule.apidesigner.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return new BranchInfo(post.getBody().getId(), "master");
     }
 

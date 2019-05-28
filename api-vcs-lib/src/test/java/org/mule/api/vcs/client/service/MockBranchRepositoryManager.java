@@ -1,6 +1,8 @@
 package org.mule.api.vcs.client.service;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -20,16 +22,27 @@ public class MockBranchRepositoryManager implements BranchRepositoryManager {
 
     @Override
     public boolean delete(String path) {
+        new File(branchDirectory, path).delete();
         return false;
     }
 
     @Override
     public boolean newFile(String path, byte[] content, String mimeType) {
+        try (final FileOutputStream fileWriter = new FileOutputStream(new File(branchDirectory, path))) {
+            fileWriter.write(content);
+        } catch (IOException e) {
+
+        }
         return false;
     }
 
     @Override
     public boolean updateFile(String path, byte[] content) {
+        try (final FileOutputStream fileWriter = new FileOutputStream(new File(branchDirectory, path))) {
+            fileWriter.write(content);
+        } catch (IOException e) {
+
+        }
         return false;
     }
 

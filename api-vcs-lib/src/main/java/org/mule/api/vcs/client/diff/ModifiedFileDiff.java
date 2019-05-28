@@ -85,7 +85,6 @@ public class ModifiedFileDiff implements Diff {
     public void push(BranchRepositoryManager branch, File targetDirectory) {
         try {
             final Path fileToPush = new File(targetDirectory, relativePath).getCanonicalFile().toPath();
-            final String relativePath = targetDirectory.toPath().relativize(fileToPush).toString();
             branch.updateFile(relativePath, Files.readAllBytes(fileToPush));
         } catch (IOException e) {
             throw new RuntimeException(e);

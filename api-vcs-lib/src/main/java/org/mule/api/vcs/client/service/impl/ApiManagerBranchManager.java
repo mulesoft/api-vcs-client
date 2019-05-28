@@ -2,14 +2,14 @@ package org.mule.api.vcs.client.service.impl;
 
 import org.mule.api.vcs.client.BranchInfo;
 import org.mule.api.vcs.client.service.*;
-import org.mule.designcenter.model.File;
-import org.mule.designcenter.model.FileContent;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.Branch;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.files.filePath.model.FilePathDELETEHeader;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.files.filePath.model.FilePathGETHeader;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.files.model.FilesGETHeader;
-import org.mule.designcenter.resource.projects.projectId.branches.branch.save.model.SavePOSTHeader;
-import org.mule.designcenter.responses.ApiDesignerXapiResponse;
+import org.mule.apidesigner.model.File;
+import org.mule.apidesigner.model.FileContent;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.Branch;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.files.filePath.model.FilePathDELETEHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.files.filePath.model.FilePathGETHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.files.model.FilesGETHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.save.model.SavePOSTHeader;
+import org.mule.apidesigner.responses.ApiDesignerXapiResponse;
 
 
 import java.util.Collections;
@@ -20,7 +20,7 @@ public class ApiManagerBranchManager implements BranchRepositoryManager {
 
 
     private final UserInfoProvider provider;
-    private final org.mule.designcenter.resource.projects.projectId.branches.branch.Branch branch;
+    private final org.mule.apidesigner.resource.projects.projectId.branches.branch.Branch branch;
 
     public ApiManagerBranchManager(UserInfoProvider provider, Branch branch) {
         this.provider = provider;

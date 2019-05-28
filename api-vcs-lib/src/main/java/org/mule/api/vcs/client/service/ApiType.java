@@ -1,17 +1,23 @@
 package org.mule.api.vcs.client.service;
 
 public enum ApiType {
-    Raml {
+    RAML {
         @Override
         public String getType() {
             return "raml";
         }
-    }, Raml_Fragment {
+    }, RAML_Fragment {
         @Override
         public String getType() {
             return "raml-fragment";
         }
-    };
+    }, OAS {
+        @Override
+        public String getType() {
+            return "oas";
+        }
+    },
+    ;
 
     public abstract String getType();
 

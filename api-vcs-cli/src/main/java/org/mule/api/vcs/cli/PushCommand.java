@@ -48,6 +48,8 @@ public class PushCommand extends BaseCommand implements Callable<Integer> {
         if (master.isFailure()) {
             return -1;
         } else {
+            System.out.println("Changes were pushed successfully.");
+            System.out.println();
             return 1;
         }
 

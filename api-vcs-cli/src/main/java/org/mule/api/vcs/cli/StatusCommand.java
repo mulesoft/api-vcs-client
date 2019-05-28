@@ -19,6 +19,7 @@ public class StatusCommand extends BaseCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        System.out.println();
         final ApiVCSClient apiVCSClient = createLocalApiVcsClient();
         final ValueResult<List<Diff>> mayBeDiffs = apiVCSClient.diff();
         if (mayBeDiffs.isFailure()) {
@@ -36,8 +37,8 @@ public class StatusCommand extends BaseCommand implements Callable<Integer> {
                 printWriter.println("\t" + diff.getOperationType().getLabel() + " " + diff.getRelativePath());
             }
             printWriter.flush();
-            System.out.println();
         }
+        System.out.println();
         return 1;
     }
 }

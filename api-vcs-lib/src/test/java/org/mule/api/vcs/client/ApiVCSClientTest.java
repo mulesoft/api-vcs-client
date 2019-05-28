@@ -16,21 +16,56 @@ import static org.junit.Assert.assertThat;
 public class ApiVCSClientTest {
 
     public static File createWorkspace() {
-        final File directory = new File(System.getProperty("java.io.tmpdir"));
-        final File workspace = new File(directory, UUID.randomUUID().toString());
+        final File directory = getTmpDirectory();
+        final File workspace = new File(directory, "working_copy" + UUID.randomUUID().toString());
         workspace.mkdirs();
         return workspace;
     }
 
-    public File getTestDirectory(String anchorName) {
+    public static File createRepository() {
+        final File directory = getTmpDirectory();
+        final File workspace = new File(directory, "repository" + UUID.randomUUID().toString());
+        workspace.mkdirs();
+        return workspace;
+    }
+
+    public void copy(File sourceLocation, File targetLocation) throws IOException {
+        if (sourceLocation.isDirectory()) {
+            copyDirectory(sourceLocation, targetLocation);
+        } else {
+            Files.copy(sourceLocation.toPath(), targetLocation.toPath());
+        }
+    }
+
+    private void copyDirectory(File source, File target) throws IOException {
+        if (!target.exists()) {
+            target.mkdir();
+        }
+        final String[] list = source.list();
+        if (list != null) {
+            for (String f : list) {
+                copy(new File(source, f), new File(target, f));
+            }
+        }
+    }
+
+
+    private static File getTmpDirectory() {
+        return new File(System.getProperty("java.io.tmpdir"));
+    }
+
+    public File getTestDirectory(String anchorName) throws IOException {
         final String anchorPath = getClass().getPackage().getName().replace('.', File.separatorChar) + File.separatorChar + anchorName + File.separatorChar + anchorName + ".txt";
         final URL resource = getClass().getClassLoader().getResource(anchorPath);
         assert (resource != null);
-        return new File(resource.getFile()).getParentFile();
+        final File parentFile = new File(resource.getFile()).getParentFile();
+        final File workspace = createRepository();
+        copyDirectory(parentFile, workspace);
+        return workspace;
     }
 
     @Test
-    public void shouldCloneCorrectly() {
+    public void shouldCloneCorrectly() throws IOException {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_clone");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
@@ -149,7 +184,7 @@ public class ApiVCSClientTest {
     }
 
     @Test
-    public void pullChanges() {
+    public void pullChanges() throws IOException {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
@@ -368,6 +403,35 @@ public class ApiVCSClientTest {
                 "  get:\n";
 
         assertThat(readFile(libFile).trim(), is(originalContent.trim()));
+    }
+
+    @Test
+    public void pushChangesToRepo() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("simple_clone");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        final ValueResult<Void> master = client.clone(new BranchInfo("1234", "master"));
+
+        final File apiRaml = new File(workspace, "Api.raml");
+
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  ";
+
+        try (final FileWriter fileWriter = new FileWriter(apiRaml)) {
+            fileWriter.write(newFileContent);
+        }
+        client.push(MergingStrategy.KEEP_BOTH, new DefaultMergeListener());
+
+        assertThat(client.diff().doGetValue().isEmpty(), is(true));
+
+        final File api = new File(dataDirectory, "master" + File.separator + "t0" + File.separator + "Api.raml");
+
+        final String pushedContent = readFile(api);
+
+        assertThat(pushedContent, is(newFileContent));
     }
 
     private String readFile(File api) throws IOException {

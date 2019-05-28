@@ -22,6 +22,9 @@ public class RevertAllCommand extends BaseCommand implements Callable<Integer> {
             return -1;
         } else {
             final ValueResult<String> valueResult = apiVCSClient.currentBranch();
+            System.out.println();
+            System.out.println("All changes were reverted successfully.");
+            System.out.println();
             return 1;
         }
     }

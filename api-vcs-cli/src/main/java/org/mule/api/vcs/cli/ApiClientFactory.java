@@ -1,7 +1,7 @@
 package org.mule.api.vcs.cli;
 
 import org.mule.cs.api.CoreServicesAPIReferenceClient;
-import org.mule.designcenter.api.ApiDesignerXapiClient;
+import org.mule.apidesigner.api.ApiDesignerXapiClient;
 
 public class ApiClientFactory {
 

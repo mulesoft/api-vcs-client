@@ -22,7 +22,7 @@ public class ApiVCSClient {
     public static final String PROJECT_ID_KEY = "projectId";
     public static final String BRANCH_KEY = "branch";
     public static final String APIVCS_FOLDER_NAME = ".apivcs";
-    public static final String GROUP_ID_KEY = "groupId";
+    public static final String ORG_ID_KEY = "orgId";
     private File targetDirectory;
     private RepositoryFileManager fileManager;
 
@@ -44,7 +44,12 @@ public class ApiVCSClient {
         } else {
             final File branchDirectory = getBranchDirectory(config.getBranch());
             if (branchDirectory.mkdirs()) {
-                return checkoutBranch(config);
+                final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
+                if (apiLock.isSuccess()) {
+                    return copyContentTo(apiLock, this.targetDirectory, branchDirectory);
+                } else {
+                    return repositoryAlreadyLocked(apiLock);
+                }
             } else {
                 return ValueResult.fail("Unable to initialize apivcs as it was already initialized. Clean .apivcs directory before clone.");
             }
@@ -133,6 +138,39 @@ public class ApiVCSClient {
         }
     }
 
+//    private ValueResult<List<Diff>> remoteDiff() {
+//        final File staging = getStagingDirectory();
+//        try {
+//            final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
+//            if (mayBeBranchInfo.isFailure()) {
+//                return mayBeBranchInfo.asFailure();
+//            } else {
+//                final BranchInfo config = mayBeBranchInfo.getValue().get();
+//                final BranchRepositoryLock branchRepositoryLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
+//                if(branchRepositoryLock.isSuccess()) {
+//                    final ValueResult<Void> voidValueResult = copyContentTo(apiLock, staging);
+//                    return voidValueResult.flatMap((success) -> {
+//                        final File branchDirectory = getBranchDirectory(config.getBranch());
+//                        final List<Diff> diffs = calculateDiff(staging, branchDirectory);
+//                        final List<ApplyResult> applyResults = applyDiffsOn(diffs, mergingStrategy, listener, targetDirectory);
+//                        applyDiffsOn(diffs, mergingStrategy, new DefaultMergeListener(), branchDirectory);
+//                        final boolean failure = applyResults.stream().anyMatch((a) -> !a.isSuccess());
+//                        if (failure) {
+//                            final String errorMessage = applyResults.stream().filter(a -> !a.isSuccess()).map(a -> a.getMessage().get()).reduce((l, r) -> l + "\n" + r).orElse("");
+//                            return ValueResult.fail(errorMessage);
+//                        } else {
+//                            return ValueResult.SUCCESS;
+//                        }
+//                    });
+//                }else{
+//                    return
+//                }
+//            } finally{
+//                deleteDirectory(staging);
+//            }
+//        }
+//    }
+
     private ValueResult<Void> pull(BranchRepositoryLock apiLock, BranchInfo config, MergingStrategy mergingStrategy, MergeListener listener) {
         final File staging = getStagingDirectory();
         try {
@@ -157,6 +195,10 @@ public class ApiVCSClient {
 
     private File getStagingDirectory() {
         final File stagingDirectory = new File(getApiVCSDirectory(), "tmp" + File.separator + "staging");
+        if (stagingDirectory.exists()) {
+            //Make sure is clean
+            deleteDirectory(stagingDirectory);
+        }
         stagingDirectory.mkdirs();
         return stagingDirectory;
     }
@@ -195,13 +237,13 @@ public class ApiVCSClient {
     }
 
     private ValueResult<Void> checkoutBranch(BranchInfo config) {
-        final File branchDirectory = getBranchDirectory(config.getBranch());
         //
         final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
         if (apiLock.isSuccess()) {
             //Make sure workspace is clean
             cleanupWorkspace();
             //Clear internal branch directory
+            final File branchDirectory = getBranchDirectory(config.getBranch());
             deleteDirectory(branchDirectory);
             return copyContentTo(apiLock, this.targetDirectory, branchDirectory);
         } else {
@@ -408,7 +450,7 @@ public class ApiVCSClient {
         final Properties properties = new Properties();
         properties.put(PROJECT_ID_KEY, projectId);
         properties.put(BRANCH_KEY, branch);
-        properties.put(GROUP_ID_KEY, fileManager.getGroupId());
+        properties.put(ORG_ID_KEY, fileManager.getGroupId());
         try (FileOutputStream fileOutputStream = new FileOutputStream(config)) {
             properties.store(fileOutputStream, "");
         } catch (IOException e) {

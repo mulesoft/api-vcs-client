@@ -5,8 +5,8 @@ import org.mule.api.vcs.client.BranchInfo;
 import org.mule.api.vcs.client.ValueResult;
 import org.mule.api.vcs.client.service.UserInfoProvider;
 import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
-import org.mule.designcenter.resource.projects.model.ProjectsGETHeader;
-import org.mule.designcenter.responses.ApiDesignerXapiResponse;
+import org.mule.apidesigner.resource.projects.model.ProjectsGETHeader;
+import org.mule.apidesigner.responses.ApiDesignerXapiResponse;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
@@ -36,9 +36,9 @@ public class CloneCommand extends BaseCommand implements Callable<Integer> {
         final UserInfoProvider accessTokenProvider = getAccessTokenProvider();
 
         String projectId = null;
-        final ApiDesignerXapiResponse<List<org.mule.designcenter.resource.projects.model.Project>> xapiResponse = ApiClientFactory.apiDesigner().projects.get(new ProjectsGETHeader(getAccessTokenProvider().getOrgId(), getAccessTokenProvider().getUserId()), getAccessTokenProvider().getAccessToken());
-        final List<org.mule.designcenter.resource.projects.model.Project> body = xapiResponse.getBody();
-        for (org.mule.designcenter.resource.projects.model.Project project : body) {
+        final ApiDesignerXapiResponse<List<org.mule.apidesigner.resource.projects.model.Project>> xapiResponse = ApiClientFactory.apiDesigner().projects.get(new ProjectsGETHeader(getAccessTokenProvider().getOrgId(), getAccessTokenProvider().getUserId()), getAccessTokenProvider().getAccessToken());
+        final List<org.mule.apidesigner.resource.projects.model.Project> body = xapiResponse.getBody();
+        for (org.mule.apidesigner.resource.projects.model.Project project : body) {
             if (project.getName().equals(projectName)) {
                 projectId = project.getId();
             }
@@ -77,6 +77,7 @@ public class CloneCommand extends BaseCommand implements Callable<Integer> {
             return -1;
         } else {
             System.out.println("Project was cloned successfully.");
+            System.out.println();
             return 1;
         }
 
