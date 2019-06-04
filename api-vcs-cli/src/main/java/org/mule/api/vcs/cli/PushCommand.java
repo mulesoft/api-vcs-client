@@ -15,7 +15,7 @@ import static picocli.CommandLine.Option;
 
 @Command(description = "Push changes to server",
         name = "push", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class PushCommand extends BaseCommand implements Callable<Integer> {
+public class PushCommand extends BaseAuthorizedCommand implements Callable<Integer> {
 
     @Option(names = {"--merge_strategy"}, description = "Strategy to be used for merging 'KEEP_THEIRS','KEEP_BOTH' or 'KEEP_OURS'", showDefaultValue = CommandLine.Help.Visibility.ALWAYS)
     MergingStrategy mergingStrategy = MergingStrategy.KEEP_BOTH;
@@ -25,7 +25,7 @@ public class PushCommand extends BaseCommand implements Callable<Integer> {
     public Integer call() throws Exception {
 
         final ApiVCSClient apiVCSClient = createLocalApiVcsClient();
-        final ValueResult master = apiVCSClient.push(mergingStrategy, new MergeListenerLogger() {
+        final ValueResult master = apiVCSClient.push(getAccessTokenProvider(), mergingStrategy, new MergeListenerLogger() {
             @Override
             public void startApplying(List<Diff> diffs) {
                 if (diffs.size() > 0) {

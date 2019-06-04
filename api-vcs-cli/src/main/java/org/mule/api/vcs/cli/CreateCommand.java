@@ -15,7 +15,7 @@ import static picocli.CommandLine.Option;
 
 @Command(description = "Inits this project",
         name = "create", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class CreateCommand extends BaseCommand implements Callable<Integer> {
+public class CreateCommand extends BaseAuthorizedCommand implements Callable<Integer> {
 
     @Option(names = {"-t", "--type"}, description = "The type of project by default is `RAML`", showDefaultValue = CommandLine.Help.Visibility.ALWAYS)
     ApiType apiType = ApiType.RAML;
@@ -31,8 +31,8 @@ public class CreateCommand extends BaseCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         System.out.println();
         System.out.println("Start creating project `" + name + "`");
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(new File(name), new ApiRepositoryFileManager(getAccessTokenProvider()));
-        final ValueResult master = apiVCSClient.create(new MergeListenerLogger(), apiType, name, description);
+        final ApiVCSClient apiVCSClient = new ApiVCSClient(new File(name), new ApiRepositoryFileManager());
+        final ValueResult master = apiVCSClient.create(getAccessTokenProvider(), new MergeListenerLogger(), apiType, name, description);
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
                 System.err.println("[Error] " + master.getMessage().get());

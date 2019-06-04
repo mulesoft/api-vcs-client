@@ -22,21 +22,17 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
 
     private ApiDesignerXapiClient client;
 
-    private final UserInfoProvider provider;
-
-    public ApiRepositoryFileManager(UserInfoProvider provider) {
-        this.provider = provider;
+    public ApiRepositoryFileManager() {
         this.client = ApiDesignerXapiClient.create();
     }
 
-    public ApiRepositoryFileManager(String url, UserInfoProvider provider) {
+    public ApiRepositoryFileManager(String url) {
         client = ApiDesignerXapiClient.create(url);
-        this.provider = provider;
     }
 
 
     @Override
-    public BranchRepositoryLock acquireLock(String projectId, String branchName) {
+    public BranchRepositoryLock acquireLock(UserInfoProvider provider,String projectId, String branchName) {
         try {
             final String userId = provider.getUserId();
             final String accessToken = provider.getAccessToken();
@@ -52,30 +48,26 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public void releaseLock(String projectId, String branchName) {
+    public void releaseLock(UserInfoProvider provider,String projectId, String branchName) {
         client.projects.projectId(projectId).branches.branch(branchName).releaseLock.post(new ReleaseLockPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
     }
 
     @Override
-    public List<ApiBranch> branches(String projectId) {
+    public List<ApiBranch> branches(UserInfoProvider provider,String projectId) {
         final ApiDesignerXapiResponse<List<Branch>> response = client.projects.projectId(projectId).branches.get(new BranchesGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return response.getBody().stream().map((branch) -> new ApiBranch(branch.getName())).collect(Collectors.toList());
     }
 
     @Override
-    public List<ProjectInfo> projects() {
+    public List<ProjectInfo> projects(UserInfoProvider provider) {
         final ApiDesignerXapiResponse<List<Project>> response = client.projects.get(new ProjectsGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return response.getBody().stream().filter(p -> !p.getType().equalsIgnoreCase("Mule_Application")).map((p) -> new ProjectInfo(p.getId(), p.getName(), p.getDescription())).collect(Collectors.toList());
     }
 
     @Override
-    public BranchInfo create(ApiType apiType, String name, String description) {
+    public BranchInfo create(UserInfoProvider provider,ApiType apiType, String name, String description) {
         final ApiDesignerXapiResponse<org.mule.apidesigner.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
-        return new BranchInfo(post.getBody().getId(), "master");
+        return new BranchInfo(post.getBody().getId(), "master", provider.getOrgId());
     }
 
-    @Override
-    public String getGroupId() {
-        return provider.getOrgId();
-    }
 }

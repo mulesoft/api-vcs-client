@@ -39,6 +39,9 @@ public class NewFileDiff implements Diff {
         } else {
             return createFile(file);
         }
+
+
+
     }
 
     private ApplyResult createFile(File file) {

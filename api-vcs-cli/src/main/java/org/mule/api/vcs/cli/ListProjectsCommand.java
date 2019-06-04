@@ -13,13 +13,13 @@ import java.util.concurrent.Callable;
 
 @Command(description = "List all projects under the given organization",
         name = "list", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class ListProjectsCommand extends BaseCommand implements Callable<Integer> {
+public class ListProjectsCommand extends BaseAuthorizedCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
         final File workingDirectory = new File(".");
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager(getAccessTokenProvider()));
-        final List<ProjectInfo> master = apiVCSClient.list();
+        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager());
+        final List<ProjectInfo> master = apiVCSClient.list(getAccessTokenProvider());
         final Integer idLength = master.stream().map(p -> p.getProjectId().length()).max(Integer::compareTo).orElse(0);
         final Integer nameLength = master.stream().map(p -> p.getProjectName().length()).max(Integer::compareTo).orElse(0);
         final Integer descriptionLength = master.stream().map(p -> Optional.ofNullable(p.getProjectDescription()).map(String::length).orElse(0)).max(Integer::compareTo).orElse(0);

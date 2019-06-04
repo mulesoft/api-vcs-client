@@ -2,14 +2,13 @@ package org.mule.api.vcs.cli;
 
 import org.mule.api.vcs.client.ApiVCSClient;
 import org.mule.api.vcs.client.ValueResult;
-import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 import java.util.concurrent.Callable;
 
 @Command(description = "Reverts all changes.",
         name = "revert-all", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class RevertAllCommand extends BaseCommand implements Callable<Integer> {
+public class RevertAllCommand extends BaseAuthorizedCommand implements Callable<Integer> {
 
 
     @Override

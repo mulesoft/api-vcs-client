@@ -12,7 +12,7 @@ import static picocli.CommandLine.Option;
 
 @Command(description = "Pulls from the api server.",
         name = "pull", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class PullCommand extends BaseCommand implements Callable<Integer> {
+public class PullCommand extends BaseAuthorizedCommand implements Callable<Integer> {
 
     @Option(names = {"--merge_strategy"}, description = "Strategy to be used for merging 'KEEP_THEIRS','KEEP_BOTH' or 'KEEP_OURS'", showDefaultValue = CommandLine.Help.Visibility.ALWAYS)
     MergingStrategy mergingStrategy = MergingStrategy.KEEP_BOTH;
@@ -28,7 +28,7 @@ public class PullCommand extends BaseCommand implements Callable<Integer> {
         }
         System.out.println();
         System.out.println("Start pulling from " + valueResult.doGetValue());
-        final ValueResult master = apiVCSClient.pull(mergingStrategy, new MergeListenerLogger());
+        final ValueResult master = apiVCSClient.pull(getAccessTokenProvider(), mergingStrategy, new MergeListenerLogger());
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
                 System.err.println("[Error] There where some conflicts while pulling.");

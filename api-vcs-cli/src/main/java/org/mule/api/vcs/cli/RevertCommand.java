@@ -9,7 +9,7 @@ import java.util.concurrent.Callable;
 
 @Command(description = "Reverts a given file.",
         name = "revert", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class RevertCommand extends BaseCommand implements Callable<Integer> {
+public class RevertCommand extends BaseAuthorizedCommand implements Callable<Integer> {
 
     @CommandLine.Parameters(description = "The file to revert.", arity = "1", index = "0")
     String relativePath;

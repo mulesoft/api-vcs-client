@@ -16,7 +16,7 @@ public class MockFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public BranchRepositoryLock acquireLock(String projectId, String branchName) {
+    public BranchRepositoryLock acquireLock(UserInfoProvider provider,String projectId, String branchName) {
         int counter = Optional.ofNullable(counters.get(branchName)).orElse(0);
         final File branchDirectory = getBranchDirectory(branchName, counter);
         if (getBranchDirectory(branchName, counter + 1).exists()) {
@@ -31,12 +31,12 @@ public class MockFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public void releaseLock(String projectId, String branchName) {
+    public void releaseLock(UserInfoProvider provider,String projectId, String branchName) {
         //Nothing to do here
     }
 
     @Override
-    public List<ApiBranch> branches(String projectId) {
+    public List<ApiBranch> branches(UserInfoProvider provider,String projectId) {
         final String[] list = directory.list();
         if (list == null) {
             return Collections.emptyList();
@@ -46,17 +46,14 @@ public class MockFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public List<ProjectInfo> projects() {
+    public List<ProjectInfo> projects(UserInfoProvider provider) {
         return new ArrayList<>();
     }
 
     @Override
-    public BranchInfo create(ApiType apiType, String name, String description) {
+    public BranchInfo create(UserInfoProvider provider,ApiType apiType, String name, String description) {
         return null;
     }
 
-    @Override
-    public String getGroupId() {
-        return "";
-    }
+
 }

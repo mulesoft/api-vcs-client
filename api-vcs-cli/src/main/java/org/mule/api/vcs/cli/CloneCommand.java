@@ -19,7 +19,7 @@ import static picocli.CommandLine.Option;
 
 @Command(description = "Clones a project in the given location",
         name = "clone", mixinStandardHelpOptions = true, version = "checksum 0.1")
-public class CloneCommand extends BaseCommand implements Callable<Integer> {
+public class CloneCommand extends BaseAuthorizedCommand implements Callable<Integer> {
     @Parameters(description = "The project to clone.", arity = "1", index = "0")
     String projectName;
 
@@ -68,9 +68,9 @@ public class CloneCommand extends BaseCommand implements Callable<Integer> {
             return -1;
         }
 
-        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager(accessTokenProvider));
+        final ApiVCSClient apiVCSClient = new ApiVCSClient(workingDirectory, new ApiRepositoryFileManager());
         System.out.println("Start clone for project: " + projectName);
-        final ValueResult master = apiVCSClient.clone(new BranchInfo(projectId, Optional.ofNullable(branch).orElse("master")));
+        final ValueResult master = apiVCSClient.clone(accessTokenProvider, new BranchInfo(projectId, Optional.ofNullable(branch).orElse("master"), accessTokenProvider.getOrgId()));
         if (master.isFailure()) {
             if (master.getMessage().isPresent())
                 System.err.println("[Error] " + master.getMessage().get());

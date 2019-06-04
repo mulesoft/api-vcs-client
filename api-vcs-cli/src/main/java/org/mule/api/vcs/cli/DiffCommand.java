@@ -3,10 +3,8 @@ package org.mule.api.vcs.cli;
 import org.mule.api.vcs.client.ApiVCSClient;
 import org.mule.api.vcs.client.ValueResult;
 import org.mule.api.vcs.client.diff.Diff;
-import org.mule.api.vcs.client.service.impl.ApiRepositoryFileManager;
 import picocli.CommandLine.Command;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.concurrent.Callable;

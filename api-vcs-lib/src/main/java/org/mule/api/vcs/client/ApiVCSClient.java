@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
+import static org.mule.api.vcs.client.service.OrgIdUserInfoProviderDecorator.withOrgId;
+
 public class ApiVCSClient {
 
     public static final String PROJECT_ID_KEY = "projectId";
@@ -32,19 +34,19 @@ public class ApiVCSClient {
         this.fileManager = fileManager;
     }
 
-    public List<String> branches(String projectId) {
-        final List<ApiBranch> theBranch = fileManager.branches(projectId);
+    public List<String> branches(UserInfoProvider provider, String projectId) {
+        final List<ApiBranch> theBranch = fileManager.branches(provider, projectId);
         return theBranch.stream().map((branch) -> branch.getName()).collect(Collectors.toList());
     }
 
-    public ValueResult<Void> clone(BranchInfo config) {
-        final ValueResult<Void> valueResult = storeConfig(config.getProjectId(), config.getBranch());
+    public ValueResult<Void> clone(UserInfoProvider provider, BranchInfo config) {
+        final ValueResult<Void> valueResult = storeConfig(config.getProjectId(), config.getBranch(), config.getOrgId());
         if (valueResult.isFailure()) {
             return valueResult.asFailure();
         } else {
             final File branchDirectory = getBranchDirectory(config.getBranch());
             if (branchDirectory.mkdirs()) {
-                final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
+                final BranchRepositoryLock apiLock = fileManager.acquireLock(withOrgId(provider, config.getOrgId()), config.getProjectId(), config.getBranch());
                 if (apiLock.isSuccess()) {
                     return copyContentTo(apiLock, this.targetDirectory, branchDirectory);
                 } else {
@@ -56,23 +58,23 @@ public class ApiVCSClient {
         }
     }
 
-    public ValueResult<Void> create(MergeListener listener, ApiType apiType, String name, String description) {
+    public ValueResult<Void> create(UserInfoProvider provider, MergeListener listener, ApiType apiType, String name, String description) {
         try {
             final File file = targetDirectory;
             if (file.exists()) {
                 return ValueResult.fail("Folder " + name + " already exists");
             } else {
                 file.mkdirs();
-                final BranchInfo branchInfo = fileManager.create(apiType, name, description);
-                storeConfig(branchInfo.getProjectId(), branchInfo.getBranch());
-                return pull(MergingStrategy.KEEP_BOTH, listener);
+                final BranchInfo branchInfo = fileManager.create(provider, apiType, name, description);
+                storeConfig(branchInfo.getProjectId(), branchInfo.getBranch(), provider.getOrgId());
+                return pull(provider, MergingStrategy.KEEP_BOTH, listener);
             }
         } catch (Exception e) {
             return ValueResult.fail(e.getMessage());
         }
     }
 
-    public ValueResult<Void> push(MergingStrategy mergingStrategy, MergeListener listener) {
+    public ValueResult<Void> push(UserInfoProvider provider, MergingStrategy mergingStrategy, MergeListener listener) {
         final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
         if (mayBeBranchInfo.isFailure()) {
             return mayBeBranchInfo.asFailure();
@@ -80,7 +82,7 @@ public class ApiVCSClient {
             BranchInfo branchInfo = mayBeBranchInfo.getValue().get();
             final String branchName = branchInfo.getBranch();
             try {
-                final BranchRepositoryLock acquireLock = fileManager.acquireLock(branchInfo.getProjectId(), branchName);
+                final BranchRepositoryLock acquireLock = fileManager.acquireLock(withOrgId(provider, branchInfo.getOrgId()), branchInfo.getProjectId(), branchName);
                 if (acquireLock.isSuccess()) {
                     //Calculate patch
                     final List<Diff> diffs = calculateDiff(branchInfo);
@@ -109,7 +111,7 @@ public class ApiVCSClient {
                     return repositoryAlreadyLocked(acquireLock);
                 }
             } finally {
-                fileManager.releaseLock(branchInfo.getProjectId(), branchName);
+                fileManager.releaseLock(withOrgId(provider, branchInfo.getOrgId()), branchInfo.getProjectId(), branchName);
             }
         }
     }
@@ -119,18 +121,18 @@ public class ApiVCSClient {
         return ValueResult.fail("Repository is locked by " + acquireLock.getOwner());
     }
 
-    public synchronized ValueResult<Void> pull(MergingStrategy mergingStrategy, MergeListener listener) {
+    public synchronized ValueResult<Void> pull(UserInfoProvider provider, MergingStrategy mergingStrategy, MergeListener listener) {
         final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
         if (mayBeBranchInfo.isFailure()) {
             return mayBeBranchInfo.asFailure();
         } else {
             final BranchInfo config = mayBeBranchInfo.getValue().get();
-            final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
+            final BranchRepositoryLock apiLock = fileManager.acquireLock(withOrgId(provider, config.getOrgId()), config.getProjectId(), config.getBranch());
             if (apiLock.isSuccess()) {
                 try {
                     return pull(apiLock, config, mergingStrategy, listener);
                 } finally {
-                    fileManager.releaseLock(config.getProjectId(), config.getBranch());
+                    fileManager.releaseLock(withOrgId(provider, config.getOrgId()), config.getProjectId(), config.getBranch());
                 }
             } else {
                 return repositoryAlreadyLocked(apiLock);
@@ -138,38 +140,7 @@ public class ApiVCSClient {
         }
     }
 
-//    private ValueResult<List<Diff>> remoteDiff() {
-//        final File staging = getStagingDirectory();
-//        try {
-//            final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
-//            if (mayBeBranchInfo.isFailure()) {
-//                return mayBeBranchInfo.asFailure();
-//            } else {
-//                final BranchInfo config = mayBeBranchInfo.getValue().get();
-//                final BranchRepositoryLock branchRepositoryLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
-//                if(branchRepositoryLock.isSuccess()) {
-//                    final ValueResult<Void> voidValueResult = copyContentTo(apiLock, staging);
-//                    return voidValueResult.flatMap((success) -> {
-//                        final File branchDirectory = getBranchDirectory(config.getBranch());
-//                        final List<Diff> diffs = calculateDiff(staging, branchDirectory);
-//                        final List<ApplyResult> applyResults = applyDiffsOn(diffs, mergingStrategy, listener, targetDirectory);
-//                        applyDiffsOn(diffs, mergingStrategy, new DefaultMergeListener(), branchDirectory);
-//                        final boolean failure = applyResults.stream().anyMatch((a) -> !a.isSuccess());
-//                        if (failure) {
-//                            final String errorMessage = applyResults.stream().filter(a -> !a.isSuccess()).map(a -> a.getMessage().get()).reduce((l, r) -> l + "\n" + r).orElse("");
-//                            return ValueResult.fail(errorMessage);
-//                        } else {
-//                            return ValueResult.SUCCESS;
-//                        }
-//                    });
-//                }else{
-//                    return
-//                }
-//            } finally{
-//                deleteDirectory(staging);
-//            }
-//        }
-//    }
+
 
     private ValueResult<Void> pull(BranchRepositoryLock apiLock, BranchInfo config, MergingStrategy mergingStrategy, MergeListener listener) {
         final File staging = getStagingDirectory();
@@ -232,23 +203,8 @@ public class ApiVCSClient {
         return calculateDiff(targetDirectory, branchDirectory);
     }
 
-    public List<ProjectInfo> list() {
-        return fileManager.projects();
-    }
-
-    private ValueResult<Void> checkoutBranch(BranchInfo config) {
-        //
-        final BranchRepositoryLock apiLock = fileManager.acquireLock(config.getProjectId(), config.getBranch());
-        if (apiLock.isSuccess()) {
-            //Make sure workspace is clean
-            cleanupWorkspace();
-            //Clear internal branch directory
-            final File branchDirectory = getBranchDirectory(config.getBranch());
-            deleteDirectory(branchDirectory);
-            return copyContentTo(apiLock, this.targetDirectory, branchDirectory);
-        } else {
-            return repositoryAlreadyLocked(apiLock);
-        }
+    public List<ProjectInfo> list(UserInfoProvider provider) {
+        return fileManager.projects(provider);
     }
 
     private void deleteDirectory(File branchDirectory) {
@@ -443,14 +399,14 @@ public class ApiVCSClient {
         });
     }
 
-    private ValueResult<Void> storeConfig(String projectId, String branch) {
+    private ValueResult<Void> storeConfig(String projectId, String branch, String groupId) {
         final File apiVCSDirectory = getApiVCSDirectory();
         apiVCSDirectory.mkdirs();
         final File config = getConfigFile(apiVCSDirectory);
         final Properties properties = new Properties();
         properties.put(PROJECT_ID_KEY, projectId);
         properties.put(BRANCH_KEY, branch);
-        properties.put(ORG_ID_KEY, fileManager.getGroupId());
+        properties.put(ORG_ID_KEY, groupId);
         try (FileOutputStream fileOutputStream = new FileOutputStream(config)) {
             properties.store(fileOutputStream, "");
         } catch (IOException e) {
@@ -459,13 +415,13 @@ public class ApiVCSClient {
         return ValueResult.SUCCESS;
     }
 
-    private File getConfigFile(File apiVCSDirectory) {
+    public static File getConfigFile(File apiVCSDirectory) {
         return new File(apiVCSDirectory, "config.properties");
     }
 
     protected ValueResult<BranchInfo> loadConfig() {
-        final Properties properties = new Properties();
         final File apiVCSDirectory = getApiVCSDirectory();
+        final Properties properties = new Properties();
         if (!apiVCSDirectory.exists()) {
             return ValueResult.fail("Not an apivcs directory.");
         } else {
@@ -475,7 +431,7 @@ public class ApiVCSClient {
                 //
                 return ValueResult.fail(e.getMessage());
             }
-            return ValueResult.success(new BranchInfo(properties.getProperty(PROJECT_ID_KEY), properties.getProperty(BRANCH_KEY)));
+            return ValueResult.success(new BranchInfo(properties.getProperty(PROJECT_ID_KEY), properties.getProperty(BRANCH_KEY), properties.getProperty(ORG_ID_KEY)));
         }
     }
 

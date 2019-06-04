@@ -6,16 +6,14 @@ import java.util.List;
 
 public interface RepositoryFileManager {
 
-    BranchRepositoryLock acquireLock(String projectId, String branchName);
+    BranchRepositoryLock acquireLock(UserInfoProvider provider, String projectId, String branchName);
 
-    void releaseLock(String projectId, String branchName);
+    void releaseLock(UserInfoProvider provider, String projectId, String branchName);
 
-    List<ApiBranch> branches(String projectId);
+    List<ApiBranch> branches(UserInfoProvider provider, String projectId);
 
-    List<ProjectInfo> projects();
+    List<ProjectInfo> projects(UserInfoProvider provider);
 
-    BranchInfo create(ApiType apiType, String name, String description);
-
-    String getGroupId();
+    BranchInfo create(UserInfoProvider provider, ApiType apiType, String name, String description);
 
 }
