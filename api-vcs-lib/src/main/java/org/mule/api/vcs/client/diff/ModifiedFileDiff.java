@@ -5,14 +5,11 @@ import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
 import org.mule.api.vcs.client.BranchInfo;
-import org.mule.api.vcs.client.MergeListener;
-import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class ModifiedFileDiff implements Diff {
@@ -20,11 +17,21 @@ public class ModifiedFileDiff implements Diff {
     private Patch<String> diff;
     private String relativePath;
     private List<String> originalLines;
+    private File original;
 
-    public ModifiedFileDiff(Patch<String> diff, String relativePath, List<String> originalLines) {
+    public ModifiedFileDiff(Patch<String> diff, String relativePath, List<String> originalLines, File original) {
         this.diff = diff;
         this.relativePath = relativePath;
         this.originalLines = originalLines;
+        this.original = original;
+    }
+
+    public File getOriginal() {
+        return original;
+    }
+
+    public List<String> getOriginalLines() {
+        return originalLines;
     }
 
     @Override

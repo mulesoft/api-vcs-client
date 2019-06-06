@@ -5,8 +5,6 @@ import com.github.difflib.patch.Chunk;
 import com.github.difflib.patch.InsertDelta;
 import com.github.difflib.patch.Patch;
 import org.mule.api.vcs.client.BranchInfo;
-import org.mule.api.vcs.client.MergeListener;
-import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.*;
@@ -39,9 +37,6 @@ public class NewFileDiff implements Diff {
         } else {
             return createFile(file);
         }
-
-
-
     }
 
     private ApplyResult createFile(File file) {

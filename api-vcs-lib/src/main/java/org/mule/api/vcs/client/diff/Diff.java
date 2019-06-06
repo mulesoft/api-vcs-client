@@ -1,6 +1,5 @@
 package org.mule.api.vcs.client.diff;
 
-import org.mule.api.vcs.client.MergeOperation;
 import org.mule.api.vcs.client.service.BranchRepositoryManager;
 
 import java.io.File;

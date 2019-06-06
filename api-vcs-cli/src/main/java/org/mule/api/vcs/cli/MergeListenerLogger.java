@@ -27,7 +27,7 @@ class MergeListenerLogger extends DefaultMergeListener {
     }
 
     @Override
-    public void startPushing() {
+    public void startPushing(List<Diff> newDiffs) {
         System.out.println("Start pushing");
     }
 

@@ -1,4 +1,4 @@
-package org.mule.api.vcs.client;
+package org.mule.api.vcs.client.diff;
 
 public enum MergeOperation {
     DELETE {
@@ -16,7 +16,19 @@ public enum MergeOperation {
         public String getLabel() {
             return "modified:";
         }
-    };
+    }, MERGE_CONFLICT {
+        @Override
+        public String getLabel() {
+            return "merge conflict:";
+        }
+    },
+    NEW_FILE_CONFLICT {
+        @Override
+        public String getLabel() {
+            return "new file conflict:";
+        }
+    }
+    ;
 
     public abstract String getLabel();
 }

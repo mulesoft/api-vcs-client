@@ -1,7 +1,4 @@
-package org.mule.api.vcs.client;
-
-import org.mule.api.vcs.client.diff.ApplyResult;
-import org.mule.api.vcs.client.diff.Diff;
+package org.mule.api.vcs.client.diff;
 
 import java.util.List;
 
@@ -13,7 +10,7 @@ public interface MergeListener {
 
     void endApplying(List<Diff> diffs, List<ApplyResult> result);
 
-    void startPushing();
+    void startPushing(List<Diff> newDiffs);
 
     void pushing(Diff diff);
 

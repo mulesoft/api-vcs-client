@@ -89,19 +89,23 @@ public class ApiVCSClient {
                     //pull
                     if (!diffs.isEmpty()) {
                         //pull
-                        final ValueResult<Void> voidValueResult = pull(acquireLock, branchInfo, mergingStrategy, listener);
-                        if (voidValueResult.isSuccess()) {
-                            //apply patches
-                            final List<Diff> newDiffs = calculateDiff(branchInfo);
-                            listener.startPushing();
-                            for (Diff newDiff : newDiffs) {
-                                newDiff.push(acquireLock.getBranchRepositoryManager(), targetDirectory);
-                                listener.pushing(newDiff);
-                            }
-                            applyDiffsOn(diffs, mergingStrategy, new DefaultMergeListener(), getBranchDirectory(branchName));
-                            return ValueResult.SUCCESS;
+                        if (containsConflict(diffs)) {
+                            return ValueResult.fail("Resolve conflicts before pushing");
                         } else {
-                            return voidValueResult;
+                            final ValueResult<Void> voidValueResult = pull(acquireLock, branchInfo, mergingStrategy, listener);
+                            if (voidValueResult.isSuccess()) {
+                                //apply patches
+                                final List<Diff> newDiffs = calculateDiff(branchInfo);
+                                listener.startPushing(newDiffs);
+                                for (Diff newDiff : newDiffs) {
+                                    newDiff.push(acquireLock.getBranchRepositoryManager(), targetDirectory);
+                                    listener.pushing(newDiff);
+                                }
+                                applyDiffsOn(diffs, mergingStrategy, new DefaultMergeListener(), getBranchDirectory(branchName));
+                                return ValueResult.SUCCESS;
+                            } else {
+                                return voidValueResult;
+                            }
                         }
                     } else {
                         //Nothing to push
@@ -114,6 +118,11 @@ public class ApiVCSClient {
                 fileManager.releaseLock(withOrgId(provider, branchInfo.getOrgId()), branchInfo.getProjectId(), branchName);
             }
         }
+    }
+
+    private boolean containsConflict(List<Diff> diffs) {
+        return diffs.stream() //
+                .anyMatch((diff) -> diff instanceof NewFileConflictDiff || diff instanceof MergeConflictDiff);
     }
 
 
@@ -141,8 +150,11 @@ public class ApiVCSClient {
     }
 
 
-
     private ValueResult<Void> pull(BranchRepositoryLock apiLock, BranchInfo config, MergingStrategy mergingStrategy, MergeListener listener) {
+        if (containsConflict(diff().getValue().orElse(new ArrayList<>()))) {
+            return ValueResult.fail("Resolve conflicts before trying to pull.");
+        }
+
         final File staging = getStagingDirectory();
         try {
             final ValueResult<Void> voidValueResult = copyContentTo(apiLock, staging);
@@ -292,27 +304,27 @@ public class ApiVCSClient {
     }
 
 
-    private List<Diff> calculateDiff(File source, File target) {
-        return calculateDiff(source, target, ".");
+    private List<Diff> calculateDiff(File modified, File original) {
+        return calculateDiff(modified, original, ".");
     }
 
-    private List<Diff> calculateDiff(File source, File target, String relativePath) {
+    private List<Diff> calculateDiff(File revised, File original, String relativePath) {
         final ArrayList<Diff> diffs = new ArrayList<>();
-        if (isIgnore(source)) {
+        if (isIgnore(revised)) {
             return diffs;
         }
         try {
-            if (source.isDirectory() && target.isDirectory()) {
-                final File[] sourceChildren = source.listFiles();
+            if (revised.isDirectory() && original.isDirectory()) {
+                final File[] sourceChildren = revised.listFiles();
                 if (sourceChildren != null) {
                     for (File sourceChild : sourceChildren) {
-                        diffs.addAll(calculateDiff(sourceChild, new File(target, sourceChild.getName()), relativePath + File.separator + sourceChild.getName()));
+                        diffs.addAll(calculateDiff(sourceChild, new File(original, sourceChild.getName()), relativePath + File.separator + sourceChild.getName()));
                     }
                 }
-                final File[] targetChildren = target.listFiles();
+                final File[] targetChildren = original.listFiles();
                 if (targetChildren != null) {
                     for (File targetChild : targetChildren) {
-                        final File sourceChild = new File(source, targetChild.getName());
+                        final File sourceChild = new File(revised, targetChild.getName());
                         if (!sourceChild.exists()) {
                             if (targetChild.isDirectory()) {
                                 addDeletedDiffs(targetChild.toPath(), relativePath, diffs);
@@ -324,11 +336,11 @@ public class ApiVCSClient {
                     }
                 }
             } else {
-                final Path sourcePath = source.toPath();
-                final Path targetPath = target.toPath();
-                if (source.isDirectory()) {
-                    if (target.isFile()) {
-                        diffs.add(new DeleteFileDiff(relativePath, Files.readAllLines(target.toPath(), BranchInfo.DEFAULT_CHARSET)));
+                final Path sourcePath = revised.toPath();
+                final Path targetPath = original.toPath();
+                if (revised.isDirectory()) {
+                    if (original.isFile()) {
+                        diffs.add(new DeleteFileDiff(relativePath, Files.readAllLines(original.toPath(), BranchInfo.DEFAULT_CHARSET)));
                     }
 
                     Files.walkFileTree(sourcePath, new SimpleFileVisitor<Path>() {
@@ -344,30 +356,44 @@ public class ApiVCSClient {
                         }
                     });
 
-                } else if (target.isDirectory()) {
-                    if (source.isFile()) {
+                } else if (original.isDirectory()) {
+                    if (revised.isFile()) {
                         final byte[] content = Files.readAllBytes(sourcePath);
                         diffs.add(new NewFileDiff(content, relativePath));
                     }
                     addDeletedDiffs(targetPath, relativePath, diffs);
-                } else if (source.isFile()) {
-                    if (target.isFile()) {
-                        final List<String> original = Files.readAllLines(target.toPath(), BranchInfo.DEFAULT_CHARSET);
-                        final List<String> revised = Files.readAllLines(source.toPath(), BranchInfo.DEFAULT_CHARSET);
-                        try {
-                            final Patch<String> diff = DiffUtils.diff(original, revised);
-                            if (!diff.getDeltas().isEmpty()) {
-                                diffs.add(new ModifiedFileDiff(diff, relativePath, original));
-                            }
-                        } catch (DiffException e) {
-                            throw new RuntimeException(e.getMessage());
+                } else if (revised.isFile()) {
+
+                    final File theirsFile = new File(revised.getPath() + Diff.THEIRS_FILE_EXTENSION);
+                    if (theirsFile.exists()) {
+                        final List<String> theirsLines = Files.readAllLines(theirsFile.toPath(), BranchInfo.DEFAULT_CHARSET);
+                        final List<String> originalLines = Files.readAllLines(revised.toPath(), BranchInfo.DEFAULT_CHARSET);
+                        final File oursFile = new File(revised.getPath() + Diff.OURS_FILE_EXTENSION);
+                        if (oursFile.exists()) {
+                            final List<String> oursLines = Files.readAllLines(oursFile.toPath(), BranchInfo.DEFAULT_CHARSET);
+                            diffs.add(new MergeConflictDiff(originalLines, theirsLines, oursLines, relativePath));
+                        } else {
+                            diffs.add(new NewFileConflictDiff(theirsLines, originalLines, relativePath));
                         }
-                    } else if (!target.exists()) {
-                        diffs.add(new NewFileDiff(Files.readAllBytes(source.toPath()), relativePath));
+                    } else {
+                        if (original.isFile()) {
+                            final List<String> originalLines = Files.readAllLines(original.toPath(), BranchInfo.DEFAULT_CHARSET);
+                            final List<String> revisedLines = Files.readAllLines(revised.toPath(), BranchInfo.DEFAULT_CHARSET);
+                            try {
+                                final Patch<String> diff = DiffUtils.diff(originalLines, revisedLines);
+                                if (!diff.getDeltas().isEmpty()) {
+                                    diffs.add(new ModifiedFileDiff(diff, relativePath, originalLines, original));
+                                }
+                            } catch (DiffException e) {
+                                throw new RuntimeException(e.getMessage());
+                            }
+                        } else if (!original.exists()) {
+                            diffs.add(new NewFileDiff(Files.readAllBytes(revised.toPath()), relativePath));
+                        }
                     }
                 } else {
-                    if (target.isFile() && !source.exists()) {
-                        diffs.add(new DeleteFileDiff(relativePath, Files.readAllLines(target.toPath(), BranchInfo.DEFAULT_CHARSET)));
+                    if (original.isFile() && !revised.exists()) {
+                        diffs.add(new DeleteFileDiff(relativePath, Files.readAllLines(original.toPath(), BranchInfo.DEFAULT_CHARSET)));
                     }
                 }
             }
