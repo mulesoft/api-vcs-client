@@ -7,7 +7,7 @@ import java.io.PrintWriter;
 
 public interface Diff {
 
-    String OURS_FILE_EXTENSION = ".ours";
+    String ORIGINAL_FILE_EXTENSION = ".original";
 
     String THEIRS_FILE_EXTENSION = ".theirs";
 

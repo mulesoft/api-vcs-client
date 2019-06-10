@@ -11,6 +11,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 
 public class ModifiedFileDiff implements Diff {
 
@@ -59,10 +60,9 @@ public class ModifiedFileDiff implements Diff {
                             //Keep the three files so that we can do a three-way-diff
                             final List<String> theirsContent = DiffUtils.patch(originalLines, diff);
                             final Path theirsPath = new File(targetDirectory, relativePath + Diff.THEIRS_FILE_EXTENSION).toPath();
-                            final Path oursPath = new File(targetDirectory, relativePath + Diff.OURS_FILE_EXTENSION).toPath();
+                            final Path originalPath = new File(targetDirectory, relativePath + Diff.ORIGINAL_FILE_EXTENSION).toPath();
                             Files.write(theirsPath, theirsContent, BranchInfo.DEFAULT_CHARSET);
-                            Files.copy(theFilePath, oursPath);
-                            Files.write(theFilePath, originalLines, BranchInfo.DEFAULT_CHARSET);
+                            Files.write(originalPath, originalLines, BranchInfo.DEFAULT_CHARSET);
                         } catch (PatchFailedException ex) {
                             //This should not happen
                             return ApplyResult.fail("FATAL ERROR while trying to apply patch." + ex.getMessage());
@@ -121,5 +121,21 @@ public class ModifiedFileDiff implements Diff {
 
     private ApplyResult failError(IOException e) {
         return ApplyResult.fail("[FATAL] Error while trying to write `" + relativePath + "`. Reason :" + e.getMessage());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ModifiedFileDiff that = (ModifiedFileDiff) o;
+        return Objects.equals(diff, that.diff) &&
+                Objects.equals(relativePath, that.relativePath) &&
+                Objects.equals(originalLines, that.originalLines) &&
+                Objects.equals(original, that.original);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(diff, relativePath, originalLines, original);
     }
 }

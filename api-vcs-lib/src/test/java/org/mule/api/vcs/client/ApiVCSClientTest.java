@@ -225,8 +225,7 @@ public class ApiVCSClientTest {
         assertThat("MyLib should exist", myLib.exists(), is(true));
         assertThat("Api should exist", api.exists(), is(true));
 
-        final String fileContent = readFile(api);
-        assertThat(fileContent.trim(), is(newFileContent.trim()));
+        assertFileContentIs(api, newFileContent);
     }
 
     @Test
@@ -254,8 +253,7 @@ public class ApiVCSClientTest {
 
         assertThat(myLib.exists(), is(true));
 
-        final String fileContent = readFile(myLib);
-        assertThat(fileContent.trim(), is(originalContent.trim()));
+        assertFileContentIs(myLib, originalContent);
     }
 
     @Test
@@ -280,8 +278,7 @@ public class ApiVCSClientTest {
 
         assertThat(myLib.exists(), is(true));
 
-        final String fileContent = readFile(myLib);
-        assertThat(fileContent.trim(), is(newFileContent.trim()));
+        assertFileContentIs(myLib, newFileContent);
     }
 
 
@@ -309,8 +306,7 @@ public class ApiVCSClientTest {
 
         assertThat(myLib.exists(), is(true));
 
-        final String fileContent = readFile(myLib);
-        assertThat(fileContent.trim(), is(newFileContent.trim()));
+        assertFileContentIs(myLib, newFileContent);
     }
 
     @Test
@@ -335,8 +331,70 @@ public class ApiVCSClientTest {
 
         assertThat(myLib.exists(), is(true));
 
-        final String fileContent = readFile(myLib);
-        assertThat(fileContent.trim(), is(newFileContent.trim()));
+        assertFileContentIs(myLib, newFileContent);
+    }
+
+
+    @Test
+    public void pullNewFileChangesWithConflictsModificationsKeepBoth() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modification_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final File myLib = new File(workspace, "Api.raml");
+
+        final String theirsContent ="#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:\n";
+
+        final String originalContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n";
+
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(myLib)) {
+            fileWriter.write(newFileContent);
+        }
+
+        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_BOTH, new DefaultMergeListener());
+        assertThat(pull.isSuccess(), is(false));
+
+        assertThat(myLib.exists(), is(true));
+
+        final List<Diff> diff = client.diff().doGetValue();
+        assertThat(diff.size(), is(1));
+        assertThat(diff.get(0), instanceOf(MergeConflictDiff.class));
+        assertThat(diff.get(0).getRelativePath(), is("./Api.raml"));
+
+        final File theirs = new File(workspace, "Api.raml" + Diff.THEIRS_FILE_EXTENSION);
+        final File original = new File(workspace, "Api.raml" + Diff.ORIGINAL_FILE_EXTENSION);
+
+        assertThat(theirs.exists(), is(true));
+        assertThat(original.exists(), is(true));
+
+        assertFileContentIs(theirs, theirsContent);
+        assertFileContentIs(original, originalContent);
+        assertFileContentIs(myLib, newFileContent);
+
+        client.markResolved("Api.raml");
+
+        assertThat(theirs.exists(), is(false));
+        assertThat(original.exists(), is(false));
+
+
+    }
+
+    public void assertFileContentIs(File theirs, String theirsContent) throws IOException {
+        final String fileContent = readFile(theirs);
+        assertThat(fileContent.trim(), is(theirsContent.trim()));
     }
 
 

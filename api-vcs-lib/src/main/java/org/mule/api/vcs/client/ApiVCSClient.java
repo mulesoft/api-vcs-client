@@ -368,7 +368,7 @@ public class ApiVCSClient {
                     if (theirsFile.exists()) {
                         final List<String> theirsLines = Files.readAllLines(theirsFile.toPath(), BranchInfo.DEFAULT_CHARSET);
                         final List<String> originalLines = Files.readAllLines(revised.toPath(), BranchInfo.DEFAULT_CHARSET);
-                        final File oursFile = new File(revised.getPath() + Diff.OURS_FILE_EXTENSION);
+                        final File oursFile = new File(revised.getPath() + Diff.ORIGINAL_FILE_EXTENSION);
                         if (oursFile.exists()) {
                             final List<String> oursLines = Files.readAllLines(oursFile.toPath(), BranchInfo.DEFAULT_CHARSET);
                             diffs.add(new MergeConflictDiff(originalLines, theirsLines, oursLines, relativePath));
@@ -404,7 +404,7 @@ public class ApiVCSClient {
     }
 
     private boolean isIgnore(File source) {
-        return source.isHidden();
+        return source.isHidden() || source.getName().endsWith(Diff.THEIRS_FILE_EXTENSION) || source.getName().endsWith(Diff.ORIGINAL_FILE_EXTENSION);
     }
 
     private void addDeletedDiffs(Path targetPath, String relativePath, ArrayList<Diff> diffs) throws IOException {
@@ -463,6 +463,23 @@ public class ApiVCSClient {
 
     public ValueResult<String> currentBranch() {
         return loadConfig().map(b -> b.getBranch());
+    }
+
+    public ValueResult<Void> markResolved(String relativePath){
+        try {
+            final File file = new File(targetDirectory, relativePath).getCanonicalFile();
+            final File oursFile = new File(file.getAbsolutePath() + Diff.ORIGINAL_FILE_EXTENSION);
+            if(oursFile.exists()){
+                oursFile.delete();
+            }
+            final File theirsFile = new File(file.getAbsolutePath() + Diff.THEIRS_FILE_EXTENSION);
+            if(theirsFile.exists()){
+                theirsFile.delete();
+            }
+            return ValueResult.SUCCESS;
+        }catch (IOException io){
+            return ValueResult.fail(io.getMessage());
+        }
     }
 
     public ValueResult<Void> revert(String relativePath) {

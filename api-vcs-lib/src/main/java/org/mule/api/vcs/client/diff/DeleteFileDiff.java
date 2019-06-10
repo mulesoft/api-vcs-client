@@ -10,6 +10,7 @@ import org.mule.api.vcs.client.service.BranchRepositoryManager;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DeleteFileDiff implements Diff {
 
@@ -72,4 +73,17 @@ public class DeleteFileDiff implements Diff {
     }
 
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DeleteFileDiff that = (DeleteFileDiff) o;
+        return Objects.equals(relativePath, that.relativePath) &&
+                Objects.equals(originalLines, that.originalLines);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(relativePath, originalLines);
+    }
 }

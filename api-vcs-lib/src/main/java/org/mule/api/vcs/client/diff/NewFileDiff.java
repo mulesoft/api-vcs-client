@@ -10,7 +10,9 @@ import org.mule.api.vcs.client.service.BranchRepositoryManager;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class NewFileDiff implements Diff {
     private byte[] content;
@@ -101,5 +103,19 @@ public class NewFileDiff implements Diff {
         }
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        NewFileDiff that = (NewFileDiff) o;
+        return Arrays.equals(content, that.content) &&
+                Objects.equals(relativePath, that.relativePath);
+    }
 
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(relativePath);
+        result = 31 * result + Arrays.hashCode(content);
+        return result;
+    }
 }
