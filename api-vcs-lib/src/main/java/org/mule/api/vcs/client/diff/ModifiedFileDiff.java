@@ -63,6 +63,7 @@ public class ModifiedFileDiff implements Diff {
                             final Path originalPath = new File(targetDirectory, relativePath + Diff.ORIGINAL_FILE_EXTENSION).toPath();
                             Files.write(theirsPath, theirsContent, BranchInfo.DEFAULT_CHARSET);
                             Files.write(originalPath, originalLines, BranchInfo.DEFAULT_CHARSET);
+
                         } catch (PatchFailedException ex) {
                             //This should not happen
                             return ApplyResult.fail("FATAL ERROR while trying to apply patch." + ex.getMessage());
@@ -70,7 +71,7 @@ public class ModifiedFileDiff implements Diff {
                         break;
                 }
                 //We should some how patch it and
-                return ApplyResult.fail(e.getMessage() + " resolution strategy `" + mergingStrategy + "`");
+                return ApplyResult.fail("Conflict occurred while merging changes.");
             }
             return ApplyResult.SUCCESSFUL;
         } catch (IOException e) {

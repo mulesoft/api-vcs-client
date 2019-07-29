@@ -1,5 +1,6 @@
 package org.mule.api.vcs.client;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 import org.mule.api.vcs.client.diff.*;
 import org.mule.api.vcs.client.service.MockFileManager;
@@ -70,7 +71,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_clone");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.isSuccess(), is(true));
         final File[] files = client.getApiVCSDirectory().listFiles();
         assertThat(files, notNullValue());
@@ -89,7 +90,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modified_diff");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.isSuccess(), is(true));
         final File apiFile = new File(workspace, "Api.raml");
         assertThat(apiFile.exists(), is(true));
@@ -126,7 +127,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modified_diff");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.isSuccess(), is(true));
         final File libFile = new File(workspace, "MyLib.raml");
         assertThat(libFile.exists(), is(false));
@@ -161,7 +162,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("complex_project");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult<Void> master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult<Void> master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.getMessage().orElse(""), master.isSuccess(), is(true));
         final File libFile = new File(workspace, "fragments" + File.separator + "MyTypes2.raml");
         assertThat(libFile.exists(), is(true));
@@ -189,12 +190,12 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "MyLib.raml");
         final File api = new File(workspace, "Api.raml");
         assertThat("MyLib should not exist", myLib.exists(), is(false));
         assertThat("Api should exist", api.exists(), is(true));
-        client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_THEIRS, new DefaultMergeListener());
+        client.pull(getUserInfo(), MergingStrategy.KEEP_THEIRS, getMergeListener());
         assertThat("MyLib should exist", myLib.exists(), is(true));
         assertThat("Api should exist", api.exists(), is(true));
     }
@@ -205,7 +206,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "MyLib.raml");
         final File api = new File(workspace, "Api.raml");
 
@@ -220,7 +221,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
         assertThat("Api should exist", api.exists(), is(true));
-        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_THEIRS, new DefaultMergeListener());
+        final ValueResult pull = client.pull(getUserInfo(), MergingStrategy.KEEP_THEIRS, getMergeListener());
         assertThat(pull.isSuccess(), is(true));
         assertThat("MyLib should exist", myLib.exists(), is(true));
         assertThat("Api should exist", api.exists(), is(true));
@@ -233,7 +234,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        client.clone(new MockUserInfoProvider(), createBranchInfo());
+        client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "MyLib.raml");
         final String originalContent = "#%RAML 1.0 DataType\n" +
                 "type: string";
@@ -248,7 +249,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_THEIRS, new DefaultMergeListener());
+        final ValueResult pull = client.pull(getUserInfo(), MergingStrategy.KEEP_THEIRS, getMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -261,7 +262,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        client.clone(new MockUserInfoProvider(), createBranchInfo());
+        client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "MyLib.raml");
         final String newFileContent = "#%RAML 1.0\n" +
                 "title: My api\n" +
@@ -273,7 +274,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_OURS, new DefaultMergeListener());
+        final ValueResult pull = client.pull(getUserInfo(), MergingStrategy.KEEP_OURS, getMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -287,7 +288,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modification_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        client.clone(new MockUserInfoProvider(), createBranchInfo());
+        client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "Api.raml");
         assertThat(myLib.exists(), is(true));
 
@@ -301,7 +302,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_OURS, new DefaultMergeListener());
+        final ValueResult pull = client.pull(getUserInfo(), MergingStrategy.KEEP_OURS, getMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -314,7 +315,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modification_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        client.clone(new MockUserInfoProvider(), createBranchInfo());
+        client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "Api.raml");
         final String newFileContent = "#%RAML 1.0\n" +
                 "title: My api\n" +
@@ -326,7 +327,7 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_OURS, new DefaultMergeListener());
+        final ValueResult pull = client.pull(getUserInfo(), MergingStrategy.KEEP_OURS, getMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -340,10 +341,10 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modification_concurrent");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        client.clone(new MockUserInfoProvider(), createBranchInfo());
+        client.clone(getUserInfo(), createBranchInfo());
         final File myLib = new File(workspace, "Api.raml");
 
-        final String theirsContent ="#%RAML 1.0\n" +
+        final String theirsContent = "#%RAML 1.0\n" +
                 "title: My api\n" +
                 "/test:\n" +
                 "  get:\n" +
@@ -364,7 +365,20 @@ public class ApiVCSClientTest {
             fileWriter.write(newFileContent);
         }
 
-        final ValueResult pull = client.pull(new MockUserInfoProvider(), MergingStrategy.KEEP_BOTH, new DefaultMergeListener());
+        final String intialDiffString = diffToString(client.diff().getValue().get().get(0));
+        String expectedDiff = "Index: ./Api.raml\n" +
+                "===================================================================\n" +
+                "--- ./Api.raml\n" +
+                "+++ ./Api.raml\n" +
+                "@@ -3,3 +3,3 @@\n" +
+                " /test:\n" +
+                "   get:\n" +
+                "-\n" +
+                "+/test2: ";
+
+        assertThat(intialDiffString.trim(), is(expectedDiff.trim()));
+
+        final ValueResult pull = client.pull(getUserInfo(), MergingStrategy.KEEP_BOTH, getMergeListener());
         assertThat(pull.isSuccess(), is(false));
 
         assertThat(myLib.exists(), is(true));
@@ -389,7 +403,126 @@ public class ApiVCSClientTest {
         assertThat(theirs.exists(), is(false));
         assertThat(original.exists(), is(false));
 
+        final String resolvedDiffString = diffToString(client.diff().getValue().get().get(0));
+        final String expectedDiff2 = "Index: ./Api.raml\n" +
+                "===================================================================\n" +
+                "--- ./Api.raml\n" +
+                "+++ ./Api.raml\n" +
+                "@@ -3,3 +3,3 @@\n" +
+                " /test:\n" +
+                "   get:\n" +
+                "-/test2:\n" +
+                "+/test2:  ";
 
+        assertThat(resolvedDiffString.trim(), is(expectedDiff2.trim()));
+
+        final ValueResult<Void> push = client.push(getUserInfo(), MergingStrategy.KEEP_BOTH, getMergeListener());
+        assertThat(push.isSuccess(), is(true));
+
+
+    }
+
+
+
+    @Test
+    public void pushNewFileChangesWithConflictsModificationsKeepBoth() throws IOException {
+        final File workspace = createWorkspace();
+        final File dataDirectory = getTestDirectory("modification_concurrent");
+        final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
+        client.clone(getUserInfo(), createBranchInfo());
+        final File myLib = new File(workspace, "Api.raml");
+
+        final String theirsContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:\n";
+
+        final String originalContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n";
+
+        final String newFileContent = "#%RAML 1.0\n" +
+                "title: My api\n" +
+                "/test:\n" +
+                "  get:\n" +
+                "/test2:  \n";
+
+        try (final FileWriter fileWriter = new FileWriter(myLib)) {
+            fileWriter.write(newFileContent);
+        }
+
+        final String intialDiffString = diffToString(client.diff().getValue().get().get(0));
+        String expectedDiff = "Index: ./Api.raml\n" +
+                "===================================================================\n" +
+                "--- ./Api.raml\n" +
+                "+++ ./Api.raml\n" +
+                "@@ -3,3 +3,3 @@\n" +
+                " /test:\n" +
+                "   get:\n" +
+                "-\n" +
+                "+/test2: ";
+
+        assertThat(intialDiffString.trim(), is(expectedDiff.trim()));
+
+        final ValueResult pushResult = client.push(getUserInfo(), MergingStrategy.KEEP_BOTH, getMergeListener());
+        assertThat(pushResult.isSuccess(), is(false));
+        final String o = (String) pushResult.getMessage().get();
+        assertThat(o , CoreMatchers.is("Conflict occurred while merging changes."));
+        assertThat(myLib.exists(), is(true));
+
+        final List<Diff> diff = client.diff().doGetValue();
+        assertThat(diff.size(), is(1));
+        assertThat(diff.get(0), instanceOf(MergeConflictDiff.class));
+        assertThat(diff.get(0).getRelativePath(), is("./Api.raml"));
+
+        final File theirs = new File(workspace, "Api.raml" + Diff.THEIRS_FILE_EXTENSION);
+        final File original = new File(workspace, "Api.raml" + Diff.ORIGINAL_FILE_EXTENSION);
+
+        assertThat(theirs.exists(), is(true));
+        assertThat(original.exists(), is(true));
+
+        assertFileContentIs(theirs, theirsContent);
+        assertFileContentIs(original, originalContent);
+        assertFileContentIs(myLib, newFileContent);
+
+        client.markResolved("Api.raml");
+
+        assertThat(theirs.exists(), is(false));
+        assertThat(original.exists(), is(false));
+
+        final String resolvedDiffString = diffToString(client.diff().getValue().get().get(0));
+        final String expectedDiff2 = "Index: ./Api.raml\n" +
+                "===================================================================\n" +
+                "--- ./Api.raml\n" +
+                "+++ ./Api.raml\n" +
+                "@@ -3,3 +3,3 @@\n" +
+                " /test:\n" +
+                "   get:\n" +
+                "-/test2:\n" +
+                "+/test2:  ";
+
+        assertThat(resolvedDiffString.trim(), is(expectedDiff2.trim()));
+
+        final ValueResult<Void> push = client.push(getUserInfo(), MergingStrategy.KEEP_BOTH, getMergeListener());
+        assertThat(push.isSuccess(), is(true));
+
+
+    }
+
+    public DefaultMergeListener getMergeListener() {
+        return new DefaultMergeListener();
+    }
+
+    public String diffToString(Diff headDiff) {
+        final StringWriter out = new StringWriter();
+        headDiff.print(new PrintWriter(out));
+        return out.toString();
+    }
+
+    public MockUserInfoProvider getUserInfo() {
+        return new MockUserInfoProvider();
     }
 
     public void assertFileContentIs(File theirs, String theirsContent) throws IOException {
@@ -403,7 +536,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modified_diff");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.isSuccess(), is(true));
         final File libFile = new File(workspace, "MyLib.raml");
         assertThat(libFile.exists(), is(false));
@@ -426,7 +559,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modified_diff");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.isSuccess(), is(true));
         final File libFile = new File(workspace, "Api.raml");
         libFile.delete();
@@ -445,7 +578,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("modified_diff");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult master = client.clone(getUserInfo(), createBranchInfo());
         assertThat(master.isSuccess(), is(true));
         final File libFile = new File(workspace, "Api.raml");
         final String newFileContent = "#%RAML 1.0\n" +
@@ -473,7 +606,7 @@ public class ApiVCSClientTest {
         final File workspace = createWorkspace();
         final File dataDirectory = getTestDirectory("simple_clone");
         final ApiVCSClient client = new ApiVCSClient(workspace, new MockFileManager(dataDirectory));
-        final ValueResult<Void> master = client.clone(new MockUserInfoProvider(), createBranchInfo());
+        final ValueResult<Void> master = client.clone(getUserInfo(), createBranchInfo());
 
         final File apiRaml = new File(workspace, "Api.raml");
 
@@ -486,7 +619,7 @@ public class ApiVCSClientTest {
         try (final FileWriter fileWriter = new FileWriter(apiRaml)) {
             fileWriter.write(newFileContent);
         }
-        client.push(new MockUserInfoProvider(), MergingStrategy.KEEP_BOTH, new DefaultMergeListener());
+        client.push(getUserInfo(), MergingStrategy.KEEP_BOTH, getMergeListener());
 
         assertThat(client.diff().doGetValue().isEmpty(), is(true));
 

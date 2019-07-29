@@ -48,7 +48,7 @@ public class ApiVCSClient {
             if (branchDirectory.mkdirs()) {
                 final BranchRepositoryLock apiLock = fileManager.acquireLock(withOrgId(provider, config.getOrgId()), config.getProjectId(), config.getBranch());
                 if (apiLock.isSuccess()) {
-                    return copyContentTo(apiLock, this.targetDirectory, branchDirectory);
+                    return cloneBranchContentTo(apiLock, this.targetDirectory, branchDirectory);
                 } else {
                     return repositoryAlreadyLocked(apiLock);
                 }
@@ -90,7 +90,7 @@ public class ApiVCSClient {
                     if (!diffs.isEmpty()) {
                         //pull
                         if (containsConflict(diffs)) {
-                            return ValueResult.fail("Resolve conflicts before pushing");
+                            return ValueResult.fail("Resolve conflicts before pushing.");
                         } else {
                             final ValueResult<Void> voidValueResult = pull(acquireLock, branchInfo, mergingStrategy, listener);
                             if (voidValueResult.isSuccess()) {
@@ -157,7 +157,7 @@ public class ApiVCSClient {
 
         final File staging = getStagingDirectory();
         try {
-            final ValueResult<Void> voidValueResult = copyContentTo(apiLock, staging);
+            final ValueResult<Void> voidValueResult = cloneBranchContentTo(apiLock, staging);
             return voidValueResult.flatMap((success) -> {
                 final File branchDirectory = getBranchDirectory(config.getBranch());
                 final List<Diff> diffs = calculateDiff(staging, branchDirectory);
@@ -223,7 +223,7 @@ public class ApiVCSClient {
         deleteDirectory(branchDirectory, pathname -> true);
     }
 
-    private ValueResult<Void> copyContentTo(BranchRepositoryLock apiLock, File... targetDirectory) {
+    private ValueResult<Void> cloneBranchContentTo(BranchRepositoryLock apiLock, File... targetDirectory) {
         final List<ApiFile> apiFiles = apiLock.getBranchRepositoryManager().listFiles();
 
         for (ApiFile file : apiFiles) {
