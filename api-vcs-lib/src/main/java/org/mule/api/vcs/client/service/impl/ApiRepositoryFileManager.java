@@ -1,6 +1,7 @@
 package org.mule.api.vcs.client.service.impl;
 
 import org.mule.api.vcs.client.BranchInfo;
+import org.mule.api.vcs.client.PublishInfo;
 import org.mule.api.vcs.client.service.*;
 import org.mule.apidesigner.api.ApiDesignerXapiClient;
 import org.mule.apidesigner.exceptions.ApiDesignerXapiException;
@@ -10,6 +11,9 @@ import org.mule.apidesigner.resource.projects.model.Project;
 import org.mule.apidesigner.resource.projects.model.ProjectsGETHeader;
 import org.mule.apidesigner.resource.projects.model.ProjectsPOSTHeader;
 import org.mule.apidesigner.resource.projects.projectId.branches.branch.acquireLock.model.AcquireLockPOSTHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.publish.exchange.model.ExchangePOSTBody;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.publish.exchange.model.ExchangePOSTHeader;
+import org.mule.apidesigner.resource.projects.projectId.branches.branch.publish.exchange.model.Metadata;
 import org.mule.apidesigner.resource.projects.projectId.branches.branch.releaseLock.model.ReleaseLockPOSTHeader;
 import org.mule.apidesigner.resource.projects.projectId.branches.model.Branch;
 import org.mule.apidesigner.resource.projects.projectId.branches.model.BranchesGETHeader;
@@ -32,7 +36,7 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
 
 
     @Override
-    public BranchRepositoryLock acquireLock(UserInfoProvider provider,String projectId, String branchName) {
+    public BranchRepositoryLock acquireLock(UserInfoProvider provider, String projectId, String branchName) {
         try {
             final String userId = provider.getUserId();
             final String accessToken = provider.getAccessToken();
@@ -48,12 +52,12 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public void releaseLock(UserInfoProvider provider,String projectId, String branchName) {
+    public void releaseLock(UserInfoProvider provider, String projectId, String branchName) {
         client.projects.projectId(projectId).branches.branch(branchName).releaseLock.post(new ReleaseLockPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
     }
 
     @Override
-    public List<ApiBranch> branches(UserInfoProvider provider,String projectId) {
+    public List<ApiBranch> branches(UserInfoProvider provider, String projectId) {
         final ApiDesignerXapiResponse<List<Branch>> response = client.projects.projectId(projectId).branches.get(new BranchesGETHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return response.getBody().stream().map((branch) -> new ApiBranch(branch.getName())).collect(Collectors.toList());
     }
@@ -65,9 +69,23 @@ public class ApiRepositoryFileManager implements RepositoryFileManager {
     }
 
     @Override
-    public BranchInfo create(UserInfoProvider provider,ApiType apiType, String name, String description) {
+    public BranchInfo create(UserInfoProvider provider, ApiType apiType, String name, String description) {
         final ApiDesignerXapiResponse<org.mule.apidesigner.model.Project> post = client.projects.post(new ProjectCreate(name, description, apiType.getType()), new ProjectsPOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
         return new BranchInfo(post.getBody().getId(), "master", provider.getOrgId());
+    }
+
+    @Override
+    public void publish(UserInfoProvider provider, PublishInfo publishInfo) {
+        final ExchangePOSTBody exchangePOSTBody = new ExchangePOSTBody();
+        exchangePOSTBody.setApiVersion(publishInfo.getApiVersion());
+        exchangePOSTBody.setAssetId(publishInfo.getAssetId());
+        exchangePOSTBody.setGroupId(publishInfo.getGroupId());
+        exchangePOSTBody.setClassifier(publishInfo.getClassifier());
+        exchangePOSTBody.setName(publishInfo.getName());
+        exchangePOSTBody.setMain(publishInfo.getMain());
+        exchangePOSTBody.setVersion(publishInfo.getVersion());
+        exchangePOSTBody.setMetadata(new Metadata(publishInfo.getBranchInfo().getProjectId(), publishInfo.getBranchInfo().getBranch()));
+        client.projects.projectId(publishInfo.getBranchInfo().getProjectId()).branches.branch(publishInfo.getBranchInfo().getBranch()).publish.exchange.post(exchangePOSTBody, new ExchangePOSTHeader(provider.getOrgId(), provider.getUserId()), provider.getAccessToken());
     }
 
 }

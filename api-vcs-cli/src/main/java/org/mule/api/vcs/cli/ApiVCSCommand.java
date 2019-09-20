@@ -12,7 +12,8 @@ import picocli.CommandLine;
                 CreateCommand.class,
                 StatusCommand.class,
                 RevertCommand.class,
-                RevertAllCommand.class
+                RevertAllCommand.class,
+                PublishCommand.class
         }
 )
 public class ApiVCSCommand implements Runnable {

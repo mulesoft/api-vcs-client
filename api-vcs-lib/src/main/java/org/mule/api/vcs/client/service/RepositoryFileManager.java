@@ -1,6 +1,7 @@
 package org.mule.api.vcs.client.service;
 
 import org.mule.api.vcs.client.BranchInfo;
+import org.mule.api.vcs.client.PublishInfo;
 
 import java.util.List;
 
@@ -15,5 +16,7 @@ public interface RepositoryFileManager {
     List<ProjectInfo> projects(UserInfoProvider provider);
 
     BranchInfo create(UserInfoProvider provider, ApiType apiType, String name, String description);
+
+    void publish(UserInfoProvider provider, PublishInfo publishInfo);
 
 }

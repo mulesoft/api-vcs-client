@@ -5,6 +5,8 @@ import com.github.difflib.algorithm.DiffException;
 import com.github.difflib.patch.Patch;
 import org.mule.api.vcs.client.diff.*;
 import org.mule.api.vcs.client.service.*;
+import org.mule.maven.exchange.model.ExchangeModel;
+import org.mule.maven.exchange.model.ExchangeModelSerializer;
 
 import java.io.*;
 import java.nio.file.FileVisitResult;
@@ -39,6 +41,7 @@ public class ApiVCSClient {
         return theBranch.stream().map((branch) -> branch.getName()).collect(Collectors.toList());
     }
 
+
     public ValueResult<Void> clone(UserInfoProvider provider, BranchInfo config) {
         final ValueResult<Void> valueResult = storeConfig(config.getProjectId(), config.getBranch(), config.getOrgId());
         if (valueResult.isFailure()) {
@@ -71,6 +74,55 @@ public class ApiVCSClient {
             }
         } catch (Exception e) {
             return ValueResult.fail(e.getMessage());
+        }
+    }
+
+    public ValueResult<Void> publish(UserInfoProvider provider, MergingStrategy mergingStrategy, MergeListener listener) {
+        final File exchangeJsonFile = new File(targetDirectory, "exchange.json");
+        if (!exchangeJsonFile.exists()) {
+            return ValueResult.fail("exchange.json file is not present");
+        }
+        final ValueResult<BranchInfo> mayBeBranchInfo = loadConfig();
+        if (mayBeBranchInfo.isFailure()) {
+            return mayBeBranchInfo.asFailure();
+        } else {
+            BranchInfo branchInfo = mayBeBranchInfo.getValue().get();
+            final String branchName = branchInfo.getBranch();
+            try {
+                final BranchRepositoryLock acquireLock = fileManager.acquireLock(withOrgId(provider, branchInfo.getOrgId()), branchInfo.getProjectId(), branchName);
+                if (acquireLock.isSuccess()) {
+                    final ValueResult<Void> voidValueResult = pull(acquireLock, branchInfo, mergingStrategy, listener);
+                    if (voidValueResult.isSuccess()) {
+                        //apply patches
+                        try {
+                            final ExchangeModel exchangeModel = new ExchangeModelSerializer().read(exchangeJsonFile);
+                            final PublishInfo publishInfo = new PublishInfo(
+                                    exchangeModel.getName(),
+                                    exchangeModel.getApiVersion(),
+                                    exchangeModel.getVersion(),
+                                    exchangeModel.getTags(),
+                                    exchangeModel.getMain(),
+                                    exchangeModel.getAssetId(),
+                                    exchangeModel.getGroupId(),
+                                    exchangeModel.getClassifier(),
+                                    branchInfo);
+                            fileManager.publish(withOrgId(provider, branchInfo.getOrgId()), publishInfo);
+                            return ValueResult.SUCCESS;
+                        } catch (IOException e) {
+                            return ValueResult.fail(" Unable to parse `exchange.json` : " + e.getMessage());
+                        }
+
+
+                    } else {
+                        return voidValueResult;
+                    }
+
+                } else {
+                    return repositoryAlreadyLocked(acquireLock);
+                }
+            } finally {
+                fileManager.releaseLock(withOrgId(provider, branchInfo.getOrgId()), branchInfo.getProjectId(), branchName);
+            }
         }
     }
 
@@ -465,19 +517,19 @@ public class ApiVCSClient {
         return loadConfig().map(b -> b.getBranch());
     }
 
-    public ValueResult<Void> markResolved(String relativePath){
+    public ValueResult<Void> markResolved(String relativePath) {
         try {
             final File file = new File(targetDirectory, relativePath).getCanonicalFile();
             final File oursFile = new File(file.getAbsolutePath() + Diff.ORIGINAL_FILE_EXTENSION);
-            if(oursFile.exists()){
+            if (oursFile.exists()) {
                 oursFile.delete();
             }
             final File theirsFile = new File(file.getAbsolutePath() + Diff.THEIRS_FILE_EXTENSION);
-            if(theirsFile.exists()){
+            if (theirsFile.exists()) {
                 theirsFile.delete();
             }
             return ValueResult.SUCCESS;
-        }catch (IOException io){
+        } catch (IOException io) {
             return ValueResult.fail(io.getMessage());
         }
     }

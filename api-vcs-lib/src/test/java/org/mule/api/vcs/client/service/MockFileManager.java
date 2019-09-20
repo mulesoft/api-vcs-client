@@ -1,6 +1,7 @@
 package org.mule.api.vcs.client.service;
 
 import org.mule.api.vcs.client.BranchInfo;
+import org.mule.api.vcs.client.PublishInfo;
 
 import java.io.File;
 import java.util.*;
@@ -53,6 +54,11 @@ public class MockFileManager implements RepositoryFileManager {
     @Override
     public BranchInfo create(UserInfoProvider provider,ApiType apiType, String name, String description) {
         return null;
+    }
+
+    @Override
+    public void publish(UserInfoProvider provider, PublishInfo publishInfo) {
+
     }
 
 
