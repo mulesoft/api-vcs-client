@@ -1,5 +1,5 @@
 @Library('studio-utils@master') _
-//Library code can be found at https://github.com/mulesoft-labs/tooling-jenkins-utils
+//Library code can be found at https://github.com/mulesoft/tooling-jenkins-utils
 
 pipeline {
    tools {
@@ -15,7 +15,7 @@ pipeline {
         stage('Preparation') {
             steps {
               cleanWs()
-              git credentialsId: 'git', url: 'https://github.com/mulesoft-labs/api-vcs-client',  branch: 'master'
+              git credentialsId: 'git', url: 'https://github.com/mulesoft/api-vcs-client',  branch: 'master'
             }
         }
         
